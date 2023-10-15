@@ -1,12 +1,11 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import type { IncomingMessage, ServerResponse } from 'node:http'
+import { CustomColor, Index } from '../color/index'
+import { Command } from "../command/index"
+import { rootFolder } from "../main"
 import { getClassName } from '../render/files'
 import Page from '../render/page'
 import { Template } from "../render/template"
-import { CustomColor, Index } from '../color/index'
-import { indexHtml, isParseIndexHtml, isSingle, rootFolder } from "../main";
-import { Command } from "../command/index";
 import { CACHE_COMMAND_KEY } from '../watch/index'
 
 /**
@@ -20,8 +19,15 @@ export const isWindow = () => process.platform === 'win32'
 export const isMac = () => process.platform === 'darwin'
 
 
-export const createIndexHtml = (p: string, isParseIndexHtml: boolean = false, isSingle: boolean = false, indexName: string = indexHtml) => {
-    return `${p}\\${indexHtml}`
+export const createIndexHtml = (p: string, command?: Command) => {
+    if (command.single) {
+        return path.join(getAbsoutePath(command.root), command.index)
+    }
+    if (p.indexOf(getAbsoluteUrl(command.root)) !== -1) {
+        return path.join(p, command.index)
+    } else {
+        return path.join(getAbsoutePath(command.root), p, command.index)
+    }
 }
 
 
@@ -46,7 +52,10 @@ export const getTagStr = (url: string, isFolder = false) => {
  * @param folderPath
  * @returns
  */
-export const getRequestUrl = (folderPath: string) => ("/" + folderPath.split(__dirname)[1].replace(/\\\\/ig, "/")).replace(/\\/ig, "/").replace(/\/\/\//g, "/").replace(/\/\//g, "/")
+export const getRequestUrl = (folderPath: string, rootDir: string) => {
+    return ("/" + folderPath.split(getAbsoutePath(rootDir))[1].replace(/\\\\/ig, "/"))
+        .replace(/\\/ig, "/").replace(/\/\/\//g, "/").replace(/\/\//g, "/")
+}
 
 
 /**
@@ -81,13 +90,21 @@ export const errorLog = (msg: any, log = "error.log",) => {
 // 暂时不处理ico格式文件
 // 在此处可以错拦截请求管理
 export const isAllowResolve = (url: string) => {
-    // console.log('url:=>',url,!/\.ico$/.test(url) && !(/http[s]:\/\//.test(url)))
-    return !/\.ico$/.test(url) && !(/http[s]:\/\//.test(url))
+    return !/\.ico$/.test(url) && !(/^http[s]:\/\//.test(url))
 }
 
 
-export const getAbsoluteUrl = (url: string) => {
-    return path.join(__dirname, rootFolder, url == '' ? '' : decodeURIComponent(handlerUrl(url)))
+export const getAbsoluteUrl = (url: string, rootDir: string = rootFolder) => {
+    const abs = getAbsoutePath(rootDir)
+    if (!url) {
+        return abs
+    }
+    url = decodeURIComponent(handlerUrl(url))
+    if (url.indexOf(abs) !== -1) {
+        return url.indexOf(abs) !== -1 ? url : path.join(abs, url)
+    } else {
+        return path.join(abs, url == '' ? '' : url)
+    }
 }
 
 
@@ -102,6 +119,17 @@ export const handlerUrl = (url: string) => {
 }
 
 
+export const getAbsoutePath = (rootDir: string) => {
+    if (rootDir.startsWith('/')) {
+        return rootDir
+    }
+    if (/^.:/.test(rootDir)) {
+        return rootDir
+    }
+    return rootDir.indexOf(path.join(__dirname, rootDir)) !== -1 ? rootDir : path.join(__dirname, rootDir)
+}
+
+
 /**
  *
  * @param folderPath 文件夹路径
@@ -111,44 +139,51 @@ export const handlerUrl = (url: string) => {
  * @returns
  */
 export const curReadFolder = (
-    folderPath: string = __dirname,
+    folderPath: string = getAbsoutePath(''),
     cache: Map<string, Page | Command>,
     isParse: boolean = false,
 ) => {
+    console.log('response dictory:', folderPath)
     let thisCommand = cache.get(CACHE_COMMAND_KEY) as Command
     let temp = ''
     // 读取当前文件夹下所有文件
-    const p = isParse ? folderPath : path.join(folderPath, thisCommand.root)
-    let reqUrl = folderPath === __dirname ? '/' : decodeURIComponent(getRequestUrl(folderPath))
+    const p = isParse ? folderPath : getAbsoluteUrl(folderPath, thisCommand.root)
+    let reqUrl = folderPath === getAbsoluteUrl(thisCommand.root) ? '/' : decodeURIComponent(getRequestUrl(folderPath, thisCommand.root))
     let readContent: string | Buffer = ''
     if (thisCommand.single) {
         // is single web page ?
-        const i = createIndexHtml(path.join(__dirname, thisCommand.root), false, true)
+        const i = createIndexHtml(getAbsoutePath(thisCommand.root), thisCommand)
         if (fs.existsSync(i)) {
             readContent = fs.readFileSync(i)
+        } else {
+            colorUtils.error(`place check ${thisCommand.index} exist ?`)
         }
-    } else if (thisCommand.isParseIndex) {
+    } else if (thisCommand.isParseIndex && fs.existsSync(createIndexHtml(p))) {
         // check index.html is exists
-        const i = createIndexHtml(p)
-        if (fs.existsSync(i)) {
-            readContent = fs.readFileSync(i)
-        }
+        readContent = fs.readFileSync(createIndexHtml(p))
     } else {
+        // 这种情况就是指定打开默认 index.html 但是 默认路径中 index.html 文件不存在！
+        // 或者index 解析为false
         const files = fs.readdirSync(folderPath)
         for (let i = 0; i < files.length; i++) {
-            let fileName = files[i]
-            const filePath = path.join(__dirname, thisCommand.root, fileName);
             try {
-                let this_url = getRequestUrl(filePath)
-                let isDirectory = fs.statSync(filePath).isDirectory()
+                const file = getAbsoluteUrl(files[i], thisCommand.root);
+                let this_url = getRequestUrl(file, thisCommand.root)
+                let isDirectory = fs.statSync(file).isDirectory()
                 temp += getTagStr(this_url, isDirectory)
             } catch (error) {
+                colorUtils.error(`curReadFolder  error: ${error}`)
                 errorLog(error)
             }
         }
         let title = path.basename(reqUrl) === '/' || path.basename(reqUrl) === '' ? '首页' : path.basename(reqUrl)
-        readContent = Template.replace(/<title>(.*?)<\/title>/, `<title>${title}</title>`).replace(/<div class="container">(.*?)<\/div>/, `<div class="container">${temp}</div>`)
+        readContent = Template
+            .replace(/<title>(.*?)<\/title>/, `<title>${title}</title>`)
+            .replace(/<div class="container">(.*?)<\/div>/, `<div class="container">${temp}</div>`)
+
+
     }
+    console.log('save url : ', reqUrl)
     cache.set(reqUrl, new Page(reqUrl, readContent, true))
     return readContent
 }
@@ -157,6 +192,12 @@ export const curReadFolder = (
 export const colorUtils = {
     'success': function (...args: any[]) {
         console.log(CustomColor.fontColor(66, 211, 146, args))
+    },
+    'error': function (...args: any[]) {
+        console.log(CustomColor.fontColor(247, 78, 30, args))
+    },
+    'warning': function (...args: any[]) {
+        console.log(CustomColor.fontColor(255, 185, 0, args))
     },
     'background': function (R: number, G: number, L: number, ...args: any[]) {
         console.log(CustomColor.fontColor(66, 211, 146, args))

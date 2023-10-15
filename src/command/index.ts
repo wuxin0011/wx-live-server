@@ -1,6 +1,6 @@
 import * as path from 'path'
 import * as fs from 'node:fs'
-import { colorUtils } from '../utils/utils'
+import { colorUtils, getAbsoutePath } from '../utils/utils'
 import {
     indexHtml,
     isOpen,
@@ -100,10 +100,10 @@ export const includeCommand = (arg: string) => {
 
 export const parseCommandArgs = (arg: string, defaultValue: unknown) => {
     if (defaultValue === undefined) {
-        console.warn('defaultValue is undefined')
+        colorUtils.warning('defaultValue is undefined')
     }
     if (!arg) {
-        console.warn('arg is null or undefined')
+        colorUtils.warning('arg is null or undefined')
         return defaultValue
     }
     const args = process.argv.slice(2)
@@ -114,7 +114,7 @@ export const parseCommandArgs = (arg: string, defaultValue: unknown) => {
                 let s = param.split('=')
                 return s[s.length - 1]
             } else {
-                console.warn(`${arg} args should like key=value`)
+                colorUtils.warning(`${arg} args should like key=value use default ${defaultValue}`)
                 return defaultValue
             }
         }
@@ -186,7 +186,7 @@ const parseRootCommand = () => {
     let d = rootFolder
     if (includeCommand(rootCommand)) {
         d = parseCommandArgs(rootCommand, d) as string
-        const f = path.join(__dirname, d)
+        const f = getAbsoutePath(d)
         if (d !== rootFolder) {
             // check folder exist ?
             if (!fs.existsSync(f) || !fs.statSync(f).isDirectory()) {
@@ -198,63 +198,52 @@ const parseRootCommand = () => {
 }
 
 const parseFileCommand = (curr: string, commandStr: string, fileName: string) => {
-    let s: boolean
+    if (!fileName) {
+        colorUtils.error(`${fileName} is not allowed null or undefined`)
+        return fileName;
+    }
     let file: string
     if (includeCommand(commandStr)) {
-        s = true
         let i = parseCommandArgs(commandStr, fileName) as string
-        file = path.join(curr, i)
+        file = path.join(getAbsoutePath(curr), i)
         // check 
         if (!fs.existsSync(file)) {
-            throw new Error(`folder ${file} not exist,please check!`)
+            colorUtils.error(`parse file error ${file}`)
         }
     }
-    return file
+    return fileName
 }
-
-const parseSingleCommand = (curr: string = parseRootCommand()) => {
-
-    let s: boolean
-    if (includeCommand(singlePageCommand)) {
-        s = true
-        let i = parseCommandArgs(indexCommand, indexHtml) as string
-        const file = path.join(__dirname, curr, i)
-        // check 
-        if (!fs.existsSync(file)) {
-            throw new Error(`folder ${file} not exist,please check!`)
-        }
-    }
-    return s
-}
-
-
 
 
 
 export const parseCommand = () => {
     let currDirctory = parseRootCommand()
-    let s = parseFileCommand(currDirctory, indexCommand, 'index.html')
+    let directIndexHtmlFile = parseFileCommand(currDirctory, indexCommand, 'index.html') ?? 'index.html'
     let errorPath = parseFileCommand(currDirctory, notFoundCommand, '') as string
     let errorPage = { errorPath: errorPath } as ErrorPage
-    let p = parsePortCommand()
-    let t = parseTimeCommand()
-    let d = parseRootCommand()
+    let port = parsePortCommand()
+    let time = parseTimeCommand()
     let isParseInndex = parseStringOrBoolCommand(isParseIndexCommand, isParseIndexHtml) as boolean
-    let directIndexHtmlFile = parseStringOrBoolCommand(indexCommand, indexHtml) as string
-    let o = parseStringOrBoolCommand(openCommand, isOpen) as boolean
-    let w = parseStringOrBoolCommand(watchCommand, isWatch) as boolean
-    let l = parseStringOrBoolCommand(logoCommand, isPrintLogo) as boolean
+    let single = !!parseFileCommand(currDirctory, singlePageCommand, directIndexHtmlFile)
+    let isOpen1 = parseStringOrBoolCommand(openCommand, isOpen) as boolean
+    let watch = parseStringOrBoolCommand(watchCommand, isWatch) as boolean
+    let isPrintLogo1 = parseStringOrBoolCommand(logoCommand, isPrintLogo) as boolean
 
-    return new Command(
-        p,
+
+    let cmd = new Command(
+        port,
         directIndexHtmlFile,
         isParseInndex,
-        d,
-        !!s,
-        o,
-        t,
-        w,
-        l,
+        currDirctory,
+        single,
+        isOpen1,
+        time,
+        watch,
+        isPrintLogo1,
         errorPage
     )
+
+    console.log('init command info ...', cmd)
+
+    return cmd
 }

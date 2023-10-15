@@ -106,31 +106,38 @@ export let defaultMyContent = 'https://wuxin0011.github.io/tools/node-live-serve
 
 
 
+const cors = (request: IncomingMessage, response: ServerResponse) => {
+    response.setHeader('Access-Control-Allow-Origin', '*')
+}
+
+
+
 /**
  * 启动入口
  */
 const server = http.createServer((request: IncomingMessage, response: ServerResponse) => {
-    let req_url = decodeURIComponent(handlerUrl(request.url))
-    console.log('req_url = >', req_url)
+    cors(request, response)
+    let url = decodeURIComponent(handlerUrl(request.url))
     // 是否是错误请求
-    if (NotFoundPageUrl.indexOf(request.url) !== -1) {
+    if (NotFoundPageUrl.indexOf(url) !== -1) {
         responseTemplate(request, response, NOT_FOUND_PAGE)
         return;
     }
     // 是否是允许的请求
-    if (isAllowResolve(req_url)) {
+    if (isAllowResolve(url)) {
         // 请求是否存在以及是否缓存了如果请求没有缓存走该请求
-        if (allReqUrl.indexOf(req_url) === -1) {
-            responseContent(request, response)
-            return;
-        }
-        // 响应处理
-        const cacheContent = pageCache.get(req_url)
-        if (cacheContent == -1) {
-            responseContent(request, response)
-            return;
-        }
-        responseTemplate(request, response, (cacheContent ?? NOT_FOUND_PAGE) as Page)
+        // if (allReqUrl.indexOf(url) === -1) {
+        //     responseContent(request, response)
+        //     return;
+        // }
+        // // 响应处理
+        // const cacheContent = pageCache.get(url)
+        // if (cacheContent === -1) {
+        //     responseContent(request, response)
+        //     return;
+        // }
+        responseContent(request, response)
+        // responseTemplate(request, response, (cacheContent ?? NOT_FOUND_PAGE) as Page)
     }
 })
 
@@ -142,21 +149,22 @@ const server = http.createServer((request: IncomingMessage, response: ServerResp
  */
 const responseContent = (request: IncomingMessage, response: ServerResponse) => {
     let url = handlerUrl(request.url)
-    let real_url = getAbsoluteUrl(url);
+    let real_url = getAbsoluteUrl(url, command.root);
     let requestUrl = decodeURIComponent(url)
-    console.log('real_url', real_url)
+    colorUtils.warning(`access = http://${hostname}:${port}${url} path = ${real_url} `)
     // 检查文件是否存在
     if (!fs.existsSync(real_url)) {
-        responseErrorPage(request, response, "请求内容不存在")
+        if (!command.single) {
+            responseErrorPage(request, response, "请求内容不存在")
+        }
         return;
     }
     try {
 
         const status = fs.statSync(real_url)
-
         if (getExt(url) === unknownFile) {
-            if (status.isDirectory() && isParseIndexHtml) {
-                const indexHtml = createIndexHtml(real_url, true)
+            if (status.isDirectory() && (isParseIndexHtml) || isSingle) {
+                const indexHtml = createIndexHtml(real_url, command)
                 if (fs.existsSync(indexHtml)) {
                     let content = readFile(indexHtml)
                     // 响应页面内容
@@ -176,7 +184,7 @@ const responseContent = (request: IncomingMessage, response: ServerResponse) => 
         } else {
             const content = readFile(real_url)
             if (!content) {
-                if (!isSingle) {
+                if (!command.single) {
                     responseErrorPage(request, response, "请求内容不存在")
                     // 缓存本次请求
                     NotFoundPageUrl.push(requestUrl)
@@ -184,14 +192,15 @@ const responseContent = (request: IncomingMessage, response: ServerResponse) => 
 
             } else {
                 // 响应页面内容
-                const this_page = new Page(requestUrl, content, false)
-                responseTemplate(request, response, this_page)
+                const page = new Page(requestUrl, content, false)
+                pageCache.set(requestUrl, page)
                 // 缓存本次 请求
                 allReqUrl.push(requestUrl)
-                pageCache.set(requestUrl, this_page)
+                responseTemplate(request, response, page)
             }
         }
     } catch (error) {
+        colorUtils.error(`响应失败：${error}`)
         responseErrorPage(request, response, error)
         return;
     }
@@ -224,14 +233,17 @@ const responseErrorPage = (request: IncomingMessage, response: ServerResponse, m
  */
 const responseTemplate = (request: IncomingMessage, response: ServerResponse, page: Page) => {
     try {
-        response.setHeader('Content-Type', page.contentType);
-        // !!! todo 如果直接使用内容长短不知道为什么报错 容易确实文件
-        // response.setHeader('Content-length', page.content.length);
-        response.write(page.content);
-        response.end();
-    } catch (error) {
-        // ignore ...
-    }
+        colorUtils.success('内容响应中...', page.pageUrl)
+        response.setHeader('Access-Control-Allow-Origin', '*')
+        response.setHeader('Content-Type', command.single && (page.pageUrl === '/' || page.pageUrl === '') ? 'text/html;charset=utf-8' : page.contentType);
+    // !!! todo 如果直接使用内容长短不知道为什么报错 容易确实文件
+    // response.setHeader('Content-length', page.content.length);
+    response.write(page.content);
+    response.end();
+} catch (error) {
+    // ignore ...
+    colorUtils.error(`response error:${error}`)
+}
 }
 
 
@@ -253,12 +265,12 @@ const openWebPage = (url: string) => {
     if (isInitSystemCommand) {
         exec(`${command} ${url}`, (error, stdout, stderr) => {
             if (error) {
-                console.error(`浏览器打开失败！错误详情: ${error}`);
+                colorUtils.error(`浏览器打开失败！错误详情: ${error}`)
                 errorLog(error)
                 return;
             }
             if (stderr) {
-                console.error(`浏览器打开失败！错误详情: ${stderr}`);
+                colorUtils.error(`浏览器打开失败！错误详情: ${stderr}`)
                 errorLog(error)
                 return;
             }
@@ -267,21 +279,21 @@ const openWebPage = (url: string) => {
             }
         })
     } else {
-        console.log('当前环境不支持打开默认浏览器 请手动打开！')
+        colorUtils.warning('当前环境不支持打开默认浏览器 请手动打开！')
     }
 
     if (isPrintLogo) {
-        colorUtils['success'](logo)
+        colorUtils.success(logo)
     }
-    console.log(`live-server 启动成功！点击访问 ${url}`)
+
+    colorUtils.success(`live-server 启动成功！点击访问 ${url}`)
 }
 
 
 const initCommandArgs = (command: Command, cache: LRUCache) => {
     if (!command) {
-        return;
+        throw new Error('commannd init error !')
     }
-    console.log('command = >', command)
     port = command.port
     indexHtml = command.index
     isParseIndexHtml = command.isParseIndex
@@ -308,7 +320,7 @@ export const run = () => {
                     host: hostname,
                     port: port
                 }, () => {
-                    curReadFolder(getAbsoluteUrl(''), pageCache.cache, false)
+                    curReadFolder(getAbsoluteUrl('', command.root), pageCache.cache, false)
                     if (isOpen) {
                         openWebPage(`http://${hostname}:${port}`)
                     }
@@ -318,15 +330,17 @@ export const run = () => {
                     firstStart = false
                 })
                 server.on('error', (error) => {
+                    // colorUtils.error(error)
                     firstStart = false
                     start(error)
                 })
             } catch (error) {
+                // colorUtils.error(error)
                 firstStart = false
                 start(error)
             }
         } else {
-            console.error('启动失败:', error)
+            colorUtils.error('启动失败:', error)
             server.close()
             errorLog(error)
         }
@@ -345,7 +359,7 @@ export const run = () => {
             start(null)
         }
     } catch (e) {
-        console.log("error:", e);
+        colorUtils.error(`启动失败：${e}`)
     }
 
 }

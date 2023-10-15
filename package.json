@@ -12,11 +12,12 @@
   "scripts": {
     "build": "rollup -c rollup.config.js",
     "dev": "rollup -c rollup.config.js -w",
-    "preview": "node ./dist/index.cjs",
-    "command:help": "node ./dist/index.cjs --h",
-    "command:logo": "node ./dist/index.cjs --l=false",
+    "preview": "node dist/index.cjs --port=2002 --r=..",
+    "command:help": "node ./dist/index.cjs -h",
+    "command:logo": "node ./dist/index.cjs -l=false",
     "command:port": "node ./dist/index.cjs -p=1000",
-    "command:watch": "node ./dist/index.cjs --w=false"
+    "command:watch": "node ./dist/index.cjs --w=false",
+    "command:single": "node ./dist/index.cjs -p=9000 -w=false -r=D://desktop//github//island -s"
   },
   "keywords": [],
   "author": "wuxin0011",

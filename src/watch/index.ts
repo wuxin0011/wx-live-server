@@ -1,10 +1,9 @@
-import Page, { LRUCache } from "../render/page";
-import { parentPort, Worker } from "worker_threads";
-import * as  path from "node:path";
 import * as fs from "node:fs";
-import { curReadFolder, errorLog, getAbsoluteUrl, readFile } from "../utils/utils";
+import { parentPort, Worker } from "worker_threads";
 import { Command } from "../command/index";
 import { refreshTime } from "../main";
+import Page, { LRUCache } from "../render/page";
+import { curReadFolder, errorLog, getAbsoluteUrl, readFile } from "../utils/utils";
 
 export const CACHE_COMMAND_KEY = 'CACHE_COMMAND_KEY'
 
@@ -64,7 +63,7 @@ export const watchFileChange = (page: Page, cache: Map<string, Page | Command>) 
     if (FileNotFounds.indexOf(pageUrl) !== -1) {
         return;
     }
-    let real_url = path.join(__dirname, childWorkCommand.root, pageUrl);
+    let real_url = getAbsoluteUrl(pageUrl, childWorkCommand.root);
     console.log('watch url =', real_url)
 
     if (!fs.existsSync(real_url)) {
