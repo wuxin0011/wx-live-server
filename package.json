@@ -1,0 +1,42 @@
+{
+  "name": "wx-live-server",
+  "version": "0.0.1",
+  "description": "预览工具",
+  "main": "dist/index.cjs",
+  "module": "dist/es/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "wx-live-serve": "dist/bin/wx-live-server"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c rollup.config.js",
+    "dev": "rollup -c rollup.config.js -w",
+    "preview": "node ./dist/index.cjs",
+    "command:help": "node ./dist/index.cjs --h",
+    "command:logo": "node ./dist/index.cjs --l=false",
+    "command:port": "node ./dist/index.cjs -p=1000",
+    "command:watch": "node ./dist/index.cjs --w=false"
+  },
+  "keywords": [],
+  "author": "wuxin0011",
+  "license": "MIT",
+  "dependencies": {
+    "rollup": "^3.29.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.3",
+    "rollup-plugin-dts": "^6.1.0",
+    "rollup-plugin-json": "^4.0.0",
+    "rollup-plugin-replace": "^2.2.0",
+    "rollup-plugin-terser": "^7.0.2",
+    "rollup-plugin-typescript2": "^0.35.0",
+    "typescript": "^5.2.2"
+  },
+  "bugs": {
+    "url": "https://github.com/wuxin0011/tampermonkey-script/issues"
+  },
+  "repository": {
+    "url": "https://github.com/wuxin0011/tampermonkey-script/barrage-keywords-stop"
+  }
+}
