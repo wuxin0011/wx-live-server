@@ -1,6 +1,6 @@
 import { getExt } from './files';
-import { MEDIA_TYPE } from './constant'
-import { Command } from "../command/index";
+import { MEDIA_TYPE } from '../constant'
+import { ServerConfig } from '../../types/index';
 // 页面
 export default class Page {
     pageUrl: string
@@ -20,7 +20,7 @@ export const getType = (url: string, is_html = false) => is_html ? 'text/html;ch
 
 export class LRUCache {
     capacity: number
-    cache: Map<string, Page | Command>
+    cache: Map<string, Page | ServerConfig>
 
     constructor(capacity: number) {
         this.capacity = capacity;
@@ -32,12 +32,12 @@ export class LRUCache {
             const value = this.cache.get(key);
             this.cache.delete(key);
             this.cache.set(key, value);
-            return value as (Page | Command);
+            return value as (Page | ServerConfig);
         }
         return -1;
     }
 
-    set(key: string, value: Page | Command) {
+    set(key: string, value: Page | ServerConfig) {
         if (this.cache.has(key)) {
             this.cache.delete(key);
         } else if (this.cache.size >= this.capacity) {

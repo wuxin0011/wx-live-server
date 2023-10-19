@@ -4,58 +4,30 @@ var child_process = require('child_process');
 var fs = require('node:fs');
 var http = require('node:http');
 var worker_threads = require('worker_threads');
-var path$1 = require('path');
 var path = require('node:path');
+var path$1 = require('path');
 
 function _interopNamespaceDefault(e) {
-    var n = Object.create(null);
-    if (e) {
-        Object.keys(e).forEach(function (k) {
-            if (k !== 'default') {
-                var d = Object.getOwnPropertyDescriptor(e, k);
-                Object.defineProperty(n, k, d.get ? d : {
-                    enumerable: true,
-                    get: function () { return e[k]; }
-                });
-            }
+  var n = Object.create(null);
+  if (e) {
+    Object.keys(e).forEach(function (k) {
+      if (k !== 'default') {
+        var d = Object.getOwnPropertyDescriptor(e, k);
+        Object.defineProperty(n, k, d.get ? d : {
+          enumerable: true,
+          get: function () { return e[k]; }
         });
-    }
-    n.default = e;
-    return Object.freeze(n);
+      }
+    });
+  }
+  n.default = e;
+  return Object.freeze(n);
 }
 
 var fs__namespace = /*#__PURE__*/_interopNamespaceDefault(fs);
 var http__namespace = /*#__PURE__*/_interopNamespaceDefault(http);
-var path__namespace$1 = /*#__PURE__*/_interopNamespaceDefault(path$1);
 var path__namespace = /*#__PURE__*/_interopNamespaceDefault(path);
-
-const RGB_VALUE_MAX = 255;
-const BACKGROUND_COLOR = 48;
-const FONT_COLOR = 38;
-const COLOR_REFLEX = `\u001B[`;
-const CLEAR_COLOR = `${COLOR_REFLEX}0m`;
-const valid = (...ins) => {
-    for (let result of ins) {
-        if (result > RGB_VALUE_MAX) {
-            throw new Error("color value max is " + RGB_VALUE_MAX);
-        }
-        if (result < 0) {
-            throw new Error("color value min is 0 ");
-        }
-    }
-};
-class CustomColor {
-    static fontColor(R, G, L, ...content) {
-        return `${COLOR_REFLEX}${FONT_COLOR};2;${R};${G};${L}m${content}${CLEAR_COLOR}`;
-    }
-    static backgroundColor(R, G, L, ...content) {
-        return `${COLOR_REFLEX}${BACKGROUND_COLOR};2;${R};${G};${L}m${content}${CLEAR_COLOR}`;
-    }
-    static backgroundAndFontColor(R, G, L, R1, G1, L1, ...content) {
-        valid(R1, G1, L1, R, G, L);
-        return `${COLOR_REFLEX}${BACKGROUND_COLOR};2;${R};${G};${L}m${COLOR_REFLEX}${FONT_COLOR};2;${R1};${G1};%${L1}m${content}${CLEAR_COLOR}`;
-    }
-}
+var path__namespace$1 = /*#__PURE__*/_interopNamespaceDefault(path$1);
 
 const htmlFile = {
     ext: /\.(html)$/i,
@@ -369,6 +341,15 @@ const getIconBeforeClass = () => {
     return t;
 };
 
+const logo = `
+#    # #    #       #      # #    # ######        ####  ###### #####  #    # ###### #####  
+#    #  #  #        #      # #    # #            #      #      #    # #    # #      #    # 
+#    #   ##   ##### #      # #    # #####  #####  ####  #####  #    # #    # #####  #    # 
+# ## #   ##         #      # #    # #                 # #      #####  #    # #      #####  
+##  ##  #  #        #      #  #  #  #            #    # #      #   #   #  #  #      #   #  
+#    # #    #       ###### #   ##   ######        ####  ###### #    #   ##   ###### #    # 
+`;
+
 const MEDIA_TYPE = {
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',
@@ -545,6 +526,34 @@ const Template = `<!DOCTYPE html>
   </html>
   `;
 
+const RGB_VALUE_MAX = 255;
+const BACKGROUND_COLOR = 48;
+const FONT_COLOR = 38;
+const COLOR_REFLEX = `\u001B[`;
+const CLEAR_COLOR = `${COLOR_REFLEX}0m`;
+const valid = (...ins) => {
+    for (let result of ins) {
+        if (result > RGB_VALUE_MAX) {
+            throw new Error("color value max is " + RGB_VALUE_MAX);
+        }
+        if (result < 0) {
+            throw new Error("color value min is 0 ");
+        }
+    }
+};
+class CustomColor {
+    static fontColor(R, G, L, ...content) {
+        return `${COLOR_REFLEX}${FONT_COLOR};2;${R};${G};${L}m${content}${CLEAR_COLOR}`;
+    }
+    static backgroundColor(R, G, L, ...content) {
+        return `${COLOR_REFLEX}${BACKGROUND_COLOR};2;${R};${G};${L}m${content}${CLEAR_COLOR}`;
+    }
+    static backgroundAndFontColor(R, G, L, R1, G1, L1, ...content) {
+        valid(R1, G1, L1, R, G, L);
+        return `${COLOR_REFLEX}${BACKGROUND_COLOR};2;${R};${G};${L}m${COLOR_REFLEX}${FONT_COLOR};2;${R1};${G1};%${L1}m${content}${CLEAR_COLOR}`;
+    }
+}
+
 const CACHE_COMMAND_KEY = 'CACHE_COMMAND_KEY';
 let childWorkCommand = null;
 const cacheUpdate = (message, pageCache) => {
@@ -573,12 +582,6 @@ const watchContent = (message) => {
 };
 const FileNotFounds = [];
 const watchFileChange = (page, cache) => {
-    if (!childWorkCommand) {
-        return;
-    }
-    if (!(cache instanceof Map)) {
-        return;
-    }
     if (!(page === null || page === void 0 ? void 0 : page.pageUrl) || !(page === null || page === void 0 ? void 0 : page.content) || !(page === null || page === void 0 ? void 0 : page.contentType)) {
         return;
     }
@@ -587,7 +590,7 @@ const watchFileChange = (page, cache) => {
         return;
     }
     let real_url = getAbsoluteUrl(pageUrl, childWorkCommand.root);
-    console.log('watch url =', real_url);
+    console.log('child watch file change info watch url =', real_url);
     if (!fs__namespace.existsSync(real_url)) {
         FileNotFounds.push(pageUrl);
         return;
@@ -608,7 +611,7 @@ const watchFileChange = (page, cache) => {
         }
     }
 };
-const childWorkerRun = (cmd, time = refreshTime, pageCache) => {
+const childWorkerRun = (cmd, time = 2000, pageCache) => {
     const childWorker = new worker_threads.Worker(__filename);
     setInterval(() => {
         childWorker.postMessage(pageCache);
@@ -620,15 +623,15 @@ const childWorkerRun = (cmd, time = refreshTime, pageCache) => {
 
 const isWindow = () => process.platform === 'win32';
 const isMac = () => process.platform === 'darwin';
-const createIndexHtml = (p, command) => {
-    if (command.single) {
-        return path__namespace.join(getAbsoutePath(command.root), command.index);
+const createIndexHtml = (p, config) => {
+    if (config.single) {
+        return path__namespace.join(getAbsoutePath(config.root), config.index);
     }
-    if (p.indexOf(getAbsoluteUrl(command.root)) !== -1) {
-        return path__namespace.join(p, command.index);
+    if (p.indexOf(getAbsoluteUrl(config.root)) !== -1) {
+        return path__namespace.join(p, config.index);
     }
     else {
-        return path__namespace.join(getAbsoutePath(command.root), p, command.index);
+        return path__namespace.join(getAbsoutePath(config.root), p, config.index);
     }
 };
 const getTagStr = (url, isFolder = false) => {
@@ -664,7 +667,7 @@ const errorLog = (msg, log = "error.log") => {
 const isAllowResolve = (url) => {
     return !/\.ico$/.test(url) && !(/^http[s]:\/\//.test(url));
 };
-const getAbsoluteUrl = (url, rootDir = rootFolder) => {
+const getAbsoluteUrl = (url, rootDir = './') => {
     const abs = getAbsoutePath(rootDir);
     if (!url) {
         return abs;
@@ -696,30 +699,29 @@ const getAbsoutePath = (rootDir) => {
     return rootDir.indexOf(path__namespace.join(__dirname, rootDir)) !== -1 ? rootDir : path__namespace.join(__dirname, rootDir);
 };
 const curReadFolder = (folderPath = getAbsoutePath(''), cache, isParse = false) => {
-    console.log('response dictory:', folderPath);
-    let thisCommand = cache.get(CACHE_COMMAND_KEY);
+    let config = cache.get(CACHE_COMMAND_KEY);
     let temp = '';
-    const p = isParse ? folderPath : getAbsoluteUrl(folderPath, thisCommand.root);
-    let reqUrl = folderPath === getAbsoluteUrl(thisCommand.root) ? '/' : decodeURIComponent(getRequestUrl(folderPath, thisCommand.root));
+    const p = isParse ? folderPath : getAbsoluteUrl(folderPath, config.root);
+    let reqUrl = folderPath === getAbsoluteUrl(config.root) ? '/' : decodeURIComponent(getRequestUrl(folderPath, config.root));
     let readContent = '';
-    if (thisCommand.single) {
-        const i = createIndexHtml(getAbsoutePath(thisCommand.root), thisCommand);
+    if (config.single) {
+        const i = createIndexHtml(getAbsoutePath(config.root), config);
         if (fs__namespace.existsSync(i)) {
             readContent = fs__namespace.readFileSync(i);
         }
         else {
-            colorUtils.error(`place check ${thisCommand.index} exist ?`);
+            colorUtils.error(`place check ${config.index} exist ?`);
         }
     }
-    else if (thisCommand.isParseIndex && fs__namespace.existsSync(createIndexHtml(p))) {
+    else if (config.parseIndex && fs__namespace.existsSync(createIndexHtml(p))) {
         readContent = fs__namespace.readFileSync(createIndexHtml(p));
     }
     else {
         const files = fs__namespace.readdirSync(folderPath);
         for (let i = 0; i < files.length; i++) {
             try {
-                const file = getAbsoluteUrl(files[i], thisCommand.root);
-                let this_url = getRequestUrl(file, thisCommand.root);
+                const file = getAbsoluteUrl(files[i], config.root);
+                let this_url = getRequestUrl(file, config.root);
                 let isDirectory = fs__namespace.statSync(file).isDirectory();
                 temp += getTagStr(this_url, isDirectory);
             }
@@ -733,7 +735,7 @@ const curReadFolder = (folderPath = getAbsoutePath(''), cache, isParse = false) 
             .replace(/<title>(.*?)<\/title>/, `<title>${title}</title>`)
             .replace(/<div class="container">(.*?)<\/div>/, `<div class="container">${temp}</div>`);
     }
-    console.log('save url : ', reqUrl);
+    console.log('save url : ', reqUrl, 'content:', readContent.toString());
     cache.set(reqUrl, new Page(reqUrl, readContent, true));
     return readContent;
 };
@@ -755,50 +757,49 @@ const colorUtils = {
     }
 };
 
-class Command {
-    constructor(p = port, i = indexHtml, isIndex = isParseIndexHtml, r = rootFolder, s = isSingle, o = isOpen, t = refreshTime, w = isWatch, l = isPrintLogo, error_404 = { errorPath: '' }) {
-        this.port = p;
-        this.index = i;
-        this.isParseIndex = isIndex;
-        this.root = r;
-        this.single = s;
-        this.time = t;
-        this.open = o;
-        this.watch = w;
-        this.logo = l;
-        this.NotFoundErrorPage = error_404;
+const config = {
+    port: 8080,
+    index: 'index.html',
+    parseIndex: false,
+    single: false,
+    watch: false,
+    open: true,
+    time: 3000,
+    logo: true,
+    root: '.',
+    base: '/',
+    ignoreBase: '',
+    ignoreFile: '',
+};
+
+const createCommand = () => {
+    let obj = {};
+    for (let k in config) {
+        obj[k] = `--${k}`;
     }
-}
-const helpCommand = '-h';
-const indexCommand = '-index';
-const isParseIndexCommand = '-i';
-const openCommand = '-o';
-const openUrlCommand = '-u';
-const portCommand = '-p';
-const watchCommand = '-w';
-const singlePageCommand = '-s';
-const rootCommand = '-r';
-const refreshCommand = '-t';
-const logoCommand = '-l';
-const notFoundCommand = '--404';
+    return obj;
+};
+const initCommand = createCommand();
 const parseHelpCommand = () => {
     const helpContent = `
     node ${path__namespace$1.basename(__filename)} [command] \n
     command list: \n
-        command                         description
+        command                description
         ===============================================================================================
-        -h                 command Description 
-        -p                 specify the startup port number default 8080,use -p=3000 
-        -index             is it directly mapped to index.html? if it exists ,default false ,use -index=about.html 📗
-        -i                 folder current html as main ,default every folder index.html ,if you want to custom, please use -index=custom.html !📗
-        -r                 directly start open folder default current ,if you want ot use dist ,use -r=dist
-        -t                 content refresh time default 3000 ,use -t=100 
-        -w                 listener file update  default false use --w
-        -o                 start open default browser ,if you want close ,please use -o=false 
-        -u                 open a web page ,default my blog about this content ,-u=url 
-        -s                 if your page is single please use -s,default false 
-        -l                 print logo , default true , -l=false close logo
-        --404              custom 404 page !use --404=404.index.html
+        --help                 command Description 
+        --port                 specify the startup port number default 8080,use -p=3000 
+        --index                is it directly mapped to index.html? if it exists ,default false ,use -index=about.html 📗
+        --parse                folder current html as main ,default every folder index.html ,if you want to custom, please use -index=custom.html !📗
+        --root                 directly start open folder default current ,if you want ot use dist ,use -r=dist
+        --time                 content refresh time default 3000 ,use -t=100 
+        --watch                listener file update  default false use --w
+        --open                 start open default browser ,if you want close ,please use -o=false 
+        --u                    open a web page ,default my blog about this content ,-u=url 
+        --single               if your page is single please use -s,default false 
+        --logo                 print logo , default true , -l=false close logo
+        --errorPage            custom 404 page !use --404=404.index.html
+        --ignoreBase           ignore path , default no any!
+        --base                 access url auto base
     `;
     colorUtils['success'](helpContent);
 };
@@ -840,13 +841,13 @@ const parseStringOrBoolCommand = (commandArg, defaultValue) => {
     return result;
 };
 const parseTimeCommand = () => {
-    let time = refreshTime;
-    if (includeCommand(refreshCommand)) {
+    let time = config.time;
+    if (includeCommand(initCommand['time'])) {
         try {
-            time = Number(parseCommandArgs(refreshCommand, 3000));
+            time = Number(parseCommandArgs(initCommand['time'], 3000));
             if (isNaN(time)) {
                 console.warn('refreshTime must be a number  use default 3000!');
-                time = refreshTime;
+                time = config.time;
             }
             if (time <= 1000) {
                 console.warn('refreshTime min should >=1000');
@@ -854,35 +855,35 @@ const parseTimeCommand = () => {
             }
         }
         catch (error) {
-            console.log(`${refreshCommand} command is parse fail ,${error}`);
-            time = refreshTime;
+            console.log(`${initCommand['time']} command is parse fail ,${error}`);
+            time = config.time;
         }
     }
     return time;
 };
 const parsePortCommand = () => {
-    let p = port;
-    if (includeCommand(portCommand)) {
+    let p = config.port;
+    if (includeCommand(initCommand['port'])) {
         try {
-            p = parseInt(parseCommandArgs(portCommand, port));
+            p = parseInt(parseCommandArgs(initCommand['port'], config.port));
             if (p <= 1) {
                 console.log(`port can not ${p} `);
-                p = port;
+                p = config.port;
             }
         }
         catch (error) {
-            p = port;
-            console.log(`${portCommand} command is parse fail,because ${error}`);
+            p = config.port;
+            console.log(`${initCommand['port']} command is parse fail,because ${error}`);
         }
     }
     return p;
 };
 const parseRootCommand = () => {
-    let d = rootFolder;
-    if (includeCommand(rootCommand)) {
-        d = parseCommandArgs(rootCommand, d);
+    let d = config.root;
+    if (includeCommand(initCommand['root'])) {
+        d = parseCommandArgs(initCommand['root'], d);
         const f = getAbsoutePath(d);
-        if (d !== rootFolder) {
+        if (d !== config.root) {
             if (!fs__namespace.existsSync(f) || !fs__namespace.statSync(f).isDirectory()) {
                 throw new Error(`folder ${f} not exist ,please check!`);
             }
@@ -908,29 +909,33 @@ const parseFileCommand = (curr, commandStr, fileName) => {
 const parseCommand = () => {
     var _a;
     let currDirctory = parseRootCommand();
-    let directIndexHtmlFile = (_a = parseFileCommand(currDirctory, indexCommand, 'index.html')) !== null && _a !== void 0 ? _a : 'index.html';
-    let errorPath = parseFileCommand(currDirctory, notFoundCommand, '');
-    let errorPage = { errorPath: errorPath };
+    let directIndexHtmlFile = (_a = parseFileCommand(currDirctory, initCommand['index'], 'index.html')) !== null && _a !== void 0 ? _a : 'index.html';
+    let errorPath = parseFileCommand(currDirctory, initCommand['errorPage'], '');
+    let errorPage = { path: errorPath, code: [404, 500] };
     let port = parsePortCommand();
     let time = parseTimeCommand();
-    let isParseInndex = parseStringOrBoolCommand(isParseIndexCommand, isParseIndexHtml);
-    let single = !!parseFileCommand(currDirctory, singlePageCommand, directIndexHtmlFile);
-    let isOpen1 = parseStringOrBoolCommand(openCommand, isOpen);
-    let watch = parseStringOrBoolCommand(watchCommand, isWatch);
-    let isPrintLogo1 = parseStringOrBoolCommand(logoCommand, isPrintLogo);
-    let cmd = new Command(port, directIndexHtmlFile, isParseInndex, currDirctory, single, isOpen1, time, watch, isPrintLogo1, errorPage);
-    console.log('init command info ...', cmd);
-    return cmd;
+    let isParseInndex = parseStringOrBoolCommand(initCommand['parseIndex'], config.parseIndex);
+    let single = !!parseFileCommand(currDirctory, initCommand['single'], config.root);
+    let isOpen1 = parseStringOrBoolCommand(initCommand['open'], config.open);
+    let watch = parseStringOrBoolCommand(initCommand['watch'], config.watch);
+    let isPrintLogo1 = parseStringOrBoolCommand(initCommand['logo'], config.logo);
+    let serverConfig = {
+        'port': port,
+        'base': '/',
+        'ignoreBase': '/wuxin00111.gitee.io',
+        'index': directIndexHtmlFile,
+        'root': currDirctory,
+        'parseIndex': isParseInndex,
+        'single': single,
+        'open': isOpen1,
+        'time': time,
+        'watch': watch,
+        'logo': isPrintLogo1,
+        'errorPage': errorPage
+    };
+    colorUtils.success(`init serverConfig info ... ${serverConfig})`);
+    return serverConfig;
 };
-
-const logo = `
-#    # #    #       #      # #    # ######        ####  ###### #####  #    # ###### #####  
-#    #  #  #        #      # #    # #            #      #      #    # #    # #      #    # 
-#    #   ##   ##### #      # #    # #####  #####  ####  #####  #    # #    # #####  #    # 
-# ## #   ##         #      # #    # #                 # #      #####  #    # #      #####  
-##  ##  #  #        #      #  #  #  #            #    # #      #   #   #  #  #      #   #  
-#    # #    #       ###### #   ##   ######        ####  ###### #    #   ##   ###### #    # 
-`;
 
 const allReqUrl = [];
 const MAX_PAGE_SIZE = 100;
@@ -939,16 +944,7 @@ const pageCache = new LRUCache(MAX_PAGE_SIZE);
 const NOT_FOUND_PAGE = new Page("404.html", NotFound, true);
 const hostname = '127.0.0.1';
 let count = 0;
-let isParseIndexHtml = false;
-let indexHtml = 'index.html';
-let refreshTime = 3000;
-let rootFolder = '.';
-let port = 8080;
-let isWatch = false;
-let isSingle = false;
-let isOpen = true;
-let isPrintLogo = true;
-let command = null;
+let serverConfig = null;
 let defaultMyContent = 'https://wuxin0011.github.io/tools/node-live-serve/';
 const cors = (request, response) => {
     response.setHeader('Access-Control-Allow-Origin', '*');
@@ -957,6 +953,7 @@ const server = http__namespace.createServer((request, response) => {
     cors(request, response);
     let url = decodeURIComponent(handlerUrl(request.url));
     if (NotFoundPageUrl.indexOf(url) !== -1) {
+        colorUtils.error(`访问路径不存在！:${url} 对应真实文件路径： ${getAbsoluteUrl(url, serverConfig.root)}`);
         responseTemplate(request, response, NOT_FOUND_PAGE);
         return;
     }
@@ -966,20 +963,20 @@ const server = http__namespace.createServer((request, response) => {
 });
 const responseContent = (request, response) => {
     let url = handlerUrl(request.url);
-    let real_url = getAbsoluteUrl(url, command.root);
+    let real_url = getAbsoluteUrl(url, serverConfig.root);
     let requestUrl = decodeURIComponent(url);
-    colorUtils.warning(`access = http://${hostname}:${port}${url} path = ${real_url} `);
     if (!fs__namespace.existsSync(real_url)) {
-        if (!command.single) {
+        if (!serverConfig.single) {
             responseErrorPage(request, response, "请求内容不存在");
         }
+        NotFoundPageUrl.push(url);
         return;
     }
     try {
         const status = fs__namespace.statSync(real_url);
         if (getExt(url) === unknownFile) {
-            if (status.isDirectory() && (isParseIndexHtml) || isSingle) {
-                const indexHtml = createIndexHtml(real_url, command);
+            if (status.isDirectory() && (serverConfig.parseIndex) || serverConfig.single) {
+                const indexHtml = createIndexHtml(real_url, serverConfig);
                 if (fs__namespace.existsSync(indexHtml)) {
                     let content = readFile(indexHtml);
                     const this_page = new Page(requestUrl, content, false);
@@ -998,7 +995,7 @@ const responseContent = (request, response) => {
         else {
             const content = readFile(real_url);
             if (!content) {
-                if (!command.single) {
+                if (!serverConfig.single) {
                     responseErrorPage(request, response, "请求内容不存在");
                     NotFoundPageUrl.push(requestUrl);
                 }
@@ -1028,9 +1025,8 @@ const responseErrorPage = (request, response, message, template, url) => {
 };
 const responseTemplate = (request, response, page) => {
     try {
-        colorUtils.success('内容响应中...', page.pageUrl);
         response.setHeader('Access-Control-Allow-Origin', '*');
-        response.setHeader('Content-Type', command.single && (page.pageUrl === '/' || page.pageUrl === '') ? 'text/html;charset=utf-8' : page.contentType);
+        response.setHeader('Content-Type', serverConfig.single && (page.pageUrl === '/' || page.pageUrl === '') ? 'text/html;charset=utf-8' : page.contentType);
         response.write(page.content);
         response.end();
     }
@@ -1039,15 +1035,15 @@ const responseTemplate = (request, response, page) => {
     }
 };
 const openWebPage = (url) => {
-    let command = '';
+    let runCommand = '';
     let isInitSystemCommand = false;
     if (!isInitSystemCommand) {
         if (isWindow()) {
-            command = 'start';
+            runCommand = 'start';
             isInitSystemCommand = true;
         }
         else if (isMac()) {
-            command = 'open';
+            runCommand = 'open';
             isInitSystemCommand = true;
         }
         else {
@@ -1055,7 +1051,7 @@ const openWebPage = (url) => {
         }
     }
     if (isInitSystemCommand) {
-        child_process.exec(`${command} ${url}`, (error, stdout, stderr) => {
+        child_process.exec(`${runCommand} ${url}`, (error, stdout, stderr) => {
             if (error) {
                 colorUtils.error(`浏览器打开失败！错误详情: ${error}`);
                 errorLog(error);
@@ -1071,45 +1067,36 @@ const openWebPage = (url) => {
     else {
         colorUtils.warning('当前环境不支持打开默认浏览器 请手动打开！');
     }
-    if (isPrintLogo) {
+    if (serverConfig.logo) {
         colorUtils.success(logo);
     }
     colorUtils.success(`live-server 启动成功！点击访问 ${url}`);
 };
-const initCommandArgs = (command, cache) => {
-    if (!command) {
-        throw new Error('commannd init error !');
+const saveConfig = (config, cache) => {
+    if (!config) {
+        throw new Error('config init error !');
     }
-    port = command.port;
-    indexHtml = command.index;
-    isParseIndexHtml = command.isParseIndex;
-    rootFolder = command.root;
-    isSingle = command.single;
-    isOpen = command.open;
-    refreshTime = command.time;
-    isWatch = command.watch;
-    isPrintLogo = command.logo;
-    cache.set(CACHE_COMMAND_KEY, command);
+    cache.set(CACHE_COMMAND_KEY, config);
 };
 const run = () => {
     let firstStart = true;
     const start = (error) => {
         if (count < 20) {
             if (!firstStart) {
-                port += 1;
+                serverConfig.port += 1;
                 count += 1;
             }
             try {
                 server.listen({
                     host: hostname,
-                    port: port
+                    port: serverConfig.port
                 }, () => {
-                    curReadFolder(getAbsoluteUrl('', command.root), pageCache.cache, false);
-                    if (isOpen) {
-                        openWebPage(`http://${hostname}:${port}`);
+                    curReadFolder(getAbsoluteUrl('', serverConfig.root), pageCache.cache, false);
+                    if (serverConfig.open) {
+                        openWebPage(`http://${hostname}:${serverConfig.port}`);
                     }
-                    if (isWatch) {
-                        childWorkerRun(command, refreshTime, pageCache);
+                    if (serverConfig.watch) {
+                        childWorkerRun(serverConfig, serverConfig.time, pageCache);
                     }
                     firstStart = false;
                 });
@@ -1130,16 +1117,16 @@ const run = () => {
         }
     };
     try {
-        if (includeCommand(helpCommand) || includeCommand('help')) {
+        if (includeCommand('--help') || includeCommand('help')) {
             parseHelpCommand();
         }
-        else if (includeCommand(openUrlCommand)) {
-            const url = parseCommandArgs(openUrlCommand, defaultMyContent);
+        else if (includeCommand(initCommand.open)) {
+            const url = parseCommandArgs(initCommand.open, defaultMyContent);
             openWebPage(url);
         }
         else {
-            command = parseCommand();
-            initCommandArgs(command, pageCache);
+            serverConfig = parseCommand();
+            saveConfig(serverConfig, pageCache);
             start(null);
         }
     }

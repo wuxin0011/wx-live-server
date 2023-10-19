@@ -1,8 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { ServerConfig } from '../../types/index'
 import { CustomColor, Index } from '../color/index'
-import { Command } from "../command/index"
-import { rootFolder } from "../main"
 import { getClassName } from '../render/files'
 import Page from '../render/page'
 import { Template } from "../render/template"
@@ -19,14 +18,14 @@ export const isWindow = () => process.platform === 'win32'
 export const isMac = () => process.platform === 'darwin'
 
 
-export const createIndexHtml = (p: string, command?: Command) => {
-    if (command.single) {
-        return path.join(getAbsoutePath(command.root), command.index)
+export const createIndexHtml = (p: string, config?: ServerConfig) => {
+    if (config.single) {
+        return path.join(getAbsoutePath(config.root), config.index)
     }
-    if (p.indexOf(getAbsoluteUrl(command.root)) !== -1) {
-        return path.join(p, command.index)
+    if (p.indexOf(getAbsoluteUrl(config!.root)) !== -1) {
+        return path.join(p, config.index)
     } else {
-        return path.join(getAbsoutePath(command.root), p, command.index)
+        return path.join(getAbsoutePath(config.root), p, config.index)
     }
 }
 
@@ -94,7 +93,7 @@ export const isAllowResolve = (url: string) => {
 }
 
 
-export const getAbsoluteUrl = (url: string, rootDir: string = rootFolder) => {
+export const getAbsoluteUrl = (url: string, rootDir: string = './') => {
     const abs = getAbsoutePath(rootDir)
     if (!url) {
         return abs
@@ -140,25 +139,25 @@ export const getAbsoutePath = (rootDir: string) => {
  */
 export const curReadFolder = (
     folderPath: string = getAbsoutePath(''),
-    cache: Map<string, Page | Command>,
+    cache: Map<string, Page | ServerConfig>,
     isParse: boolean = false,
 ) => {
-    console.log('response dictory:', folderPath)
-    let thisCommand = cache.get(CACHE_COMMAND_KEY) as Command
+    // console.log('response dictory:', folderPath)
+    let config = cache.get(CACHE_COMMAND_KEY) as ServerConfig
     let temp = ''
     // 读取当前文件夹下所有文件
-    const p = isParse ? folderPath : getAbsoluteUrl(folderPath, thisCommand.root)
-    let reqUrl = folderPath === getAbsoluteUrl(thisCommand.root) ? '/' : decodeURIComponent(getRequestUrl(folderPath, thisCommand.root))
+    const p = isParse ? folderPath : getAbsoluteUrl(folderPath, config.root)
+    let reqUrl = folderPath === getAbsoluteUrl(config.root) ? '/' : decodeURIComponent(getRequestUrl(folderPath, config.root))
     let readContent: string | Buffer = ''
-    if (thisCommand.single) {
+    if (config.single) {
         // is single web page ?
-        const i = createIndexHtml(getAbsoutePath(thisCommand.root), thisCommand)
+        const i = createIndexHtml(getAbsoutePath(config.root), config)
         if (fs.existsSync(i)) {
             readContent = fs.readFileSync(i)
         } else {
-            colorUtils.error(`place check ${thisCommand.index} exist ?`)
+            colorUtils.error(`place check ${config.index} exist ?`)
         }
-    } else if (thisCommand.isParseIndex && fs.existsSync(createIndexHtml(p))) {
+    } else if (config.parseIndex && fs.existsSync(createIndexHtml(p))) {
         // check index.html is exists
         readContent = fs.readFileSync(createIndexHtml(p))
     } else {
@@ -167,8 +166,8 @@ export const curReadFolder = (
         const files = fs.readdirSync(folderPath)
         for (let i = 0; i < files.length; i++) {
             try {
-                const file = getAbsoluteUrl(files[i], thisCommand.root);
-                let this_url = getRequestUrl(file, thisCommand.root)
+                const file = getAbsoluteUrl(files[i], config.root);
+                let this_url = getRequestUrl(file, config.root)
                 let isDirectory = fs.statSync(file).isDirectory()
                 temp += getTagStr(this_url, isDirectory)
             } catch (error) {
@@ -183,7 +182,7 @@ export const curReadFolder = (
 
 
     }
-    console.log('save url : ', reqUrl)
+    console.log('save url : ', reqUrl, 'content:', readContent.toString())
     cache.set(reqUrl, new Page(reqUrl, readContent, true))
     return readContent
 }

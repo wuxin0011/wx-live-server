@@ -1,13 +1,13 @@
+import { ServerConfig } from './../../types/index.d';
 import * as fs from "node:fs";
 import { parentPort, Worker } from "worker_threads";
-import { Command } from "../command/index";
-import { refreshTime } from "../main";
+import { initCommand } from '../command/index'
 import Page, { LRUCache } from "../render/page";
 import { curReadFolder, errorLog, getAbsoluteUrl, readFile } from "../utils/utils";
 
 export const CACHE_COMMAND_KEY = 'CACHE_COMMAND_KEY'
 
-let childWorkCommand: Command | null = null
+let childWorkCommand: ServerConfig | null = null
 
 /**
  * watch content
@@ -33,7 +33,7 @@ export const watchContent = (message: unknown) => {
     if (message instanceof Map) {
         for (let [k, v] of message.entries()) {
             if (k === CACHE_COMMAND_KEY && !commandIsLoad) {
-                childWorkCommand = message.get(CACHE_COMMAND_KEY) as Command
+                childWorkCommand = message.get(CACHE_COMMAND_KEY) as ServerConfig
                 commandIsLoad = true
             } else if (commandIsLoad) {
                 watchFileChange(v, message)
@@ -48,13 +48,7 @@ export const watchContent = (message: unknown) => {
 const FileNotFounds = []
 
 
-export const watchFileChange = (page: Page, cache: Map<string, Page | Command>) => {
-    if (!childWorkCommand) {
-        return;
-    }
-    if (!(cache instanceof Map)) {
-        return;
-    }
+export const watchFileChange = (page: Page, cache: Map<string, Page | ServerConfig>) => {
     if (!page?.pageUrl || !page?.content || !page?.contentType) {
         return;
     }
@@ -64,7 +58,7 @@ export const watchFileChange = (page: Page, cache: Map<string, Page | Command>) 
         return;
     }
     let real_url = getAbsoluteUrl(pageUrl, childWorkCommand.root);
-    console.log('watch url =', real_url)
+    console.log('child watch file change info watch url =', real_url)
 
     if (!fs.existsSync(real_url)) {
         FileNotFounds.push(pageUrl)
@@ -92,7 +86,7 @@ export const watchFileChange = (page: Page, cache: Map<string, Page | Command>) 
 }
 
 
-export const childWorkerRun = (cmd: Command, time: number = refreshTime, pageCache: LRUCache) => {
+export const childWorkerRun = (cmd: ServerConfig, time: number = 2000, pageCache: LRUCache) => {
     const childWorker = new Worker(__filename);
     setInterval(() => {
         childWorker.postMessage(pageCache);

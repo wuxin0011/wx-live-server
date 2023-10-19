@@ -1,4 +1,5 @@
 export const MEDIA_TYPE = {
+
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.png': 'image/png',
@@ -12,7 +13,7 @@ export const MEDIA_TYPE = {
   '.log': 'text/plain;charset=utf-8',
   '.css': 'text/css;charset=utf-8',
   '.js': 'text/javascript;charset=utf-8',
-  '.md': 'text/plain;charset=utf-8', 
+  '.md': 'text/plain;charset=utf-8',
   '.xml': 'application/xml',
   '.pdf': 'application/pdf',
   '.xlsx': 'application/vnd.ms-excel',
@@ -32,5 +33,4 @@ export const MEDIA_TYPE = {
   '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav',
 };
-
 

@@ -13,11 +13,12 @@
     "build": "rollup -c rollup.config.js",
     "dev": "rollup -c rollup.config.js -w",
     "preview": "node dist/index.cjs --port=2002 --r=..",
-    "command:help": "node ./dist/index.cjs -h",
-    "command:logo": "node ./dist/index.cjs -l=false",
-    "command:port": "node ./dist/index.cjs -p=1000",
-    "command:watch": "node ./dist/index.cjs --w=false",
-    "command:single": "node ./dist/index.cjs -p=9000 -w=false -r=D://desktop//github//island -s"
+    "command:help": "node ./dist/index.cjs --help",
+    "command:logo": "node ./dist/index.cjs --logo=false",
+    "command:port": "node ./dist/index.cjs --port=1000",
+    "command:watch": "node ./dist/index.cjs --watch=false",
+    "command:single": "node ./dist/index.cjs --port=9000 --watch=false --root=D://desktop//github//island --single",
+    "command:html": "node ./dist/index.cjs --port=8888 --watch=false --root=D://desktop//github//blog//docs//.vuepress//dist"
   },
   "keywords": [],
   "author": "wuxin0011",
@@ -35,9 +36,9 @@
     "typescript": "^5.2.2"
   },
   "bugs": {
-    "url": "https://github.com/wuxin0011/tampermonkey-script/issues"
+    "url": "https://github.com/wuxin0011/wx-live-server/issues"
   },
   "repository": {
-    "url": "https://github.com/wuxin0011/tampermonkey-script/barrage-keywords-stop"
+    "url": "https://github.com/wuxin0011/wx-live-server"
   }
 }

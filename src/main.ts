@@ -3,15 +3,6 @@ import * as fs from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import * as http from 'node:http'
 import { isMainThread, parentPort } from 'worker_threads'
-import {
-    Command,
-    helpCommand,
-    includeCommand,
-    openUrlCommand,
-    parseCommand,
-    parseCommandArgs,
-    parseHelpCommand
-} from "./command/index"
 import { getExt, unknownFile } from './render/files'
 import logo from "./render/logo"
 import Page, { LRUCache } from './render/page'
@@ -29,6 +20,8 @@ import {
     readFile
 } from './utils/utils'
 import { CACHE_COMMAND_KEY, childWorkerRun, watchContent } from "./watch/index"
+import { ServerConfig } from '../types/index'
+import { includeCommand, parseCommand, parseCommandArgs, parseHelpCommand, initCommand } from './command/index'
 
 
 
@@ -49,54 +42,9 @@ const hostname = '127.0.0.1'
 let count = 0
 /* command args */
 
-/**
- * 是否直接解析访问路径的 指定文件 默认index.html
- */
-export let isParseIndexHtml = false
 
 
-export let indexHtml = 'index.html'
-
-/**
- * 监听时间
- */
-export let refreshTime = 3000
-
-/**
- * 指定启动的跟根路径
- */
-export let rootFolder = '.'
-
-/**
- * 指定启动默认端口号
- */
-export let port = 8080
-
-
-/**
- * watch
- */
-export let isWatch = false
-
-
-/**
- * watch
- */
-export let isSingle = false
-
-/**
- * 默认是否打开网页
- */
-export let isOpen = true
-
-
-/**
- * 是否输出Logo 默认输出
- */
-export let isPrintLogo = true
-
-
-let command: Command | null | undefined = null
+let serverConfig: ServerConfig | null | undefined = null
 
 
 /**
@@ -120,6 +68,7 @@ const server = http.createServer((request: IncomingMessage, response: ServerResp
     let url = decodeURIComponent(handlerUrl(request.url))
     // 是否是错误请求
     if (NotFoundPageUrl.indexOf(url) !== -1) {
+        colorUtils.error(`访问路径不存在！:${url} 对应真实文件路径： ${getAbsoluteUrl(url, serverConfig.root)}`)
         responseTemplate(request, response, NOT_FOUND_PAGE)
         return;
     }
@@ -149,22 +98,25 @@ const server = http.createServer((request: IncomingMessage, response: ServerResp
  */
 const responseContent = (request: IncomingMessage, response: ServerResponse) => {
     let url = handlerUrl(request.url)
-    let real_url = getAbsoluteUrl(url, command.root);
+    let real_url = getAbsoluteUrl(url, serverConfig.root);
     let requestUrl = decodeURIComponent(url)
-    colorUtils.warning(`access = http://${hostname}:${port}${url} path = ${real_url} `)
+    // colorUtils.warning(`${new Date().toLocaleString()} 请求地址 = http://${hostname}:${port}${url} 真实路径 = ${real_url} `)
     // 检查文件是否存在
     if (!fs.existsSync(real_url)) {
-        if (!command.single) {
+        if (!serverConfig.single) {
             responseErrorPage(request, response, "请求内容不存在")
         }
+        // 不存在的路径缓存
+        NotFoundPageUrl.push(url)
         return;
     }
     try {
 
+        // 获取对应路径文件的状态信息
         const status = fs.statSync(real_url)
         if (getExt(url) === unknownFile) {
-            if (status.isDirectory() && (isParseIndexHtml) || isSingle) {
-                const indexHtml = createIndexHtml(real_url, command)
+            if (status.isDirectory() && (serverConfig.parseIndex) || serverConfig.single) {
+                const indexHtml = createIndexHtml(real_url, serverConfig)
                 if (fs.existsSync(indexHtml)) {
                     let content = readFile(indexHtml)
                     // 响应页面内容
@@ -177,14 +129,19 @@ const responseContent = (request: IncomingMessage, response: ServerResponse) => 
             }
             return;
         }
+
+
+        // 如果是文件夹类型文件 应该直接读取第一级文件的文件信息 响应一个页面
         if (status.isDirectory()) {
             curReadFolder(real_url, pageCache.cache)
             const page = pageCache.get(requestUrl)
             responseTemplate(request, response, page !== -1 ? page as Page : NOT_FOUND_PAGE)
         } else {
+
+            // 非目录文件 读取文件内容
             const content = readFile(real_url)
             if (!content) {
-                if (!command.single) {
+                if (!serverConfig.single) {
                     responseErrorPage(request, response, "请求内容不存在")
                     // 缓存本次请求
                     NotFoundPageUrl.push(requestUrl)
@@ -233,29 +190,29 @@ const responseErrorPage = (request: IncomingMessage, response: ServerResponse, m
  */
 const responseTemplate = (request: IncomingMessage, response: ServerResponse, page: Page) => {
     try {
-        colorUtils.success('内容响应中...', page.pageUrl)
+        // colorUtils.success('内容响应中...', page.pageUrl)
         response.setHeader('Access-Control-Allow-Origin', '*')
-        response.setHeader('Content-Type', command.single && (page.pageUrl === '/' || page.pageUrl === '') ? 'text/html;charset=utf-8' : page.contentType);
-    // !!! todo 如果直接使用内容长短不知道为什么报错 容易确实文件
-    // response.setHeader('Content-length', page.content.length);
-    response.write(page.content);
-    response.end();
-} catch (error) {
-    // ignore ...
-    colorUtils.error(`response error:${error}`)
-}
+        response.setHeader('Content-Type', serverConfig.single && (page.pageUrl === '/' || page.pageUrl === '') ? 'text/html;charset=utf-8' : page.contentType);
+        // !!! todo 如果直接使用内容长短不知道为什么报错 容易确实文件
+        // response.setHeader('Content-length', page.content.length);
+        response.write(page.content);
+        response.end();
+    } catch (error) {
+        // ignore ...
+        colorUtils.error(`response error:${error}`)
+    }
 }
 
 
 const openWebPage = (url: string) => {
-    let command = ''
+    let runCommand = ''
     let isInitSystemCommand = false
     if (!isInitSystemCommand) {
         if (isWindow()) {
-            command = 'start'
+            runCommand = 'start'
             isInitSystemCommand = true
         } else if (isMac()) {
-            command = 'open'
+            runCommand = 'open'
             isInitSystemCommand = true
         } else {
             isInitSystemCommand = false
@@ -263,7 +220,7 @@ const openWebPage = (url: string) => {
     }
 
     if (isInitSystemCommand) {
-        exec(`${command} ${url}`, (error, stdout, stderr) => {
+        exec(`${runCommand} ${url}`, (error, stdout, stderr) => {
             if (error) {
                 colorUtils.error(`浏览器打开失败！错误详情: ${error}`)
                 errorLog(error)
@@ -282,7 +239,7 @@ const openWebPage = (url: string) => {
         colorUtils.warning('当前环境不支持打开默认浏览器 请手动打开！')
     }
 
-    if (isPrintLogo) {
+    if (serverConfig.logo) {
         colorUtils.success(logo)
     }
 
@@ -290,20 +247,11 @@ const openWebPage = (url: string) => {
 }
 
 
-const initCommandArgs = (command: Command, cache: LRUCache) => {
-    if (!command) {
-        throw new Error('commannd init error !')
+const saveConfig = (config: ServerConfig, cache: LRUCache) => {
+    if (!config) {
+        throw new Error('config init error !')
     }
-    port = command.port
-    indexHtml = command.index
-    isParseIndexHtml = command.isParseIndex
-    rootFolder = command.root
-    isSingle = command.single
-    isOpen = command.open
-    refreshTime = command.time
-    isWatch = command.watch
-    isPrintLogo = command.logo
-    cache.set(CACHE_COMMAND_KEY, command)
+    cache.set(CACHE_COMMAND_KEY, config)
 }
 
 
@@ -312,20 +260,20 @@ export const run = () => {
     const start = (error: unknown) => {
         if (count < 20) {
             if (!firstStart) {
-                port += 1
+                serverConfig.port += 1
                 count += 1
             }
             try {
                 server.listen({
                     host: hostname,
-                    port: port
+                    port: serverConfig.port
                 }, () => {
-                    curReadFolder(getAbsoluteUrl('', command.root), pageCache.cache, false)
-                    if (isOpen) {
-                        openWebPage(`http://${hostname}:${port}`)
+                    curReadFolder(getAbsoluteUrl('', serverConfig.root), pageCache.cache, false)
+                    if (serverConfig.open) {
+                        openWebPage(`http://${hostname}:${serverConfig.port}`)
                     }
-                    if (isWatch) {
-                        childWorkerRun(command, refreshTime, pageCache)
+                    if (serverConfig.watch) {
+                        childWorkerRun(serverConfig, serverConfig.time, pageCache)
                     }
                     firstStart = false
                 })
@@ -348,14 +296,14 @@ export const run = () => {
     }
 
     try {
-        if (includeCommand(helpCommand) || includeCommand('help')) {
+        if (includeCommand('--help') || includeCommand('help')) {
             parseHelpCommand()
-        } else if (includeCommand(openUrlCommand)) {
-            const url = parseCommandArgs(openUrlCommand, defaultMyContent) as string
+        } else if (includeCommand(initCommand.open)) {
+            const url = parseCommandArgs(initCommand.open, defaultMyContent) as string
             openWebPage(url)
         } else {
-            command = parseCommand()
-            initCommandArgs(command, pageCache)
+            serverConfig = parseCommand()
+            saveConfig(serverConfig, pageCache)
             start(null)
         }
     } catch (e) {
