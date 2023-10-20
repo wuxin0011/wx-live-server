@@ -146,7 +146,7 @@ const parseRootCommand = () => {
 
 const parseFileCommand = (curr: string, commandStr: string, fileName: string) => {
     if (!fileName) {
-        colorUtils.error(`${fileName} is not allowed null or undefined`)
+        // colorUtils.error(`${fileName} is not allowed null or undefined`)
         return fileName;
     }
     let file: string
@@ -164,6 +164,10 @@ const parseFileCommand = (curr: string, commandStr: string, fileName: string) =>
 
 
 export const parseCommand = () => {
+
+
+    console.log('初始命令:', initCommand)
+
     let currDirctory = parseRootCommand()
     let directIndexHtmlFile = parseFileCommand(currDirctory, initCommand['index'], 'index.html') ?? 'index.html'
     let errorPath = parseFileCommand(currDirctory, initCommand['errorPage'], '') as string
@@ -175,12 +179,14 @@ export const parseCommand = () => {
     let isOpen1 = parseStringOrBoolCommand(initCommand['open'], config.open) as boolean
     let watch = parseStringOrBoolCommand(initCommand['watch'], config.watch) as boolean
     let isPrintLogo1 = parseStringOrBoolCommand(initCommand['logo'], config.logo) as boolean
+    let base = parseStringOrBoolCommand(initCommand['base'], config.base) as string
+    let ignoreBase = parseStringOrBoolCommand(initCommand['ignoreBase'], config.ignoreBase as string) as string
 
 
     let serverConfig: ServerConfig = {
         'port': port,
-        'base': '/',
-        'ignoreBase': '/wuxin00111.gitee.io',
+        'base': base,
+        'ignoreBase': ignoreBase,
         'index': directIndexHtmlFile,
         'root': currDirctory,
         'parseIndex': isParseInndex,
@@ -191,8 +197,15 @@ export const parseCommand = () => {
         'logo': isPrintLogo1,
         'errorPage': errorPage
     }
-
-    colorUtils.success(`init serverConfig info ... ${serverConfig})`)
-
+    console.log('======================基础信息==================')
+    console.log('端口号', serverConfig.port)
+    console.log('前缀', serverConfig.base)
+    console.log('忽略前缀', serverConfig.ignoreBase)
+    console.log('是否解析index.html', serverConfig.parseIndex)
+    console.log('index.html = >', serverConfig.index)
+    console.log('是否是单文件应用', serverConfig.single)
+    console.log('是否打开默认浏览器', serverConfig.open)
+    console.log('是否监视文件', serverConfig.watch, '监视时间', serverConfig.time)
+    console.log('是否打印logo', serverConfig.logo)
     return serverConfig
 }

@@ -4,8 +4,8 @@ var child_process = require('child_process');
 var fs = require('node:fs');
 var http = require('node:http');
 var worker_threads = require('worker_threads');
-var path = require('node:path');
 var path$1 = require('path');
+var path = require('node:path');
 
 function _interopNamespaceDefault(e) {
   var n = Object.create(null);
@@ -26,8 +26,51 @@ function _interopNamespaceDefault(e) {
 
 var fs__namespace = /*#__PURE__*/_interopNamespaceDefault(fs);
 var http__namespace = /*#__PURE__*/_interopNamespaceDefault(http);
-var path__namespace = /*#__PURE__*/_interopNamespaceDefault(path);
 var path__namespace$1 = /*#__PURE__*/_interopNamespaceDefault(path$1);
+var path__namespace = /*#__PURE__*/_interopNamespaceDefault(path);
+
+const config = {
+    port: 8080,
+    index: 'index.html',
+    parseIndex: false,
+    single: false,
+    watch: false,
+    open: true,
+    time: 3000,
+    logo: true,
+    root: '.',
+    base: '/',
+    ignoreBase: '',
+    ignoreFile: '',
+};
+
+const RGB_VALUE_MAX = 255;
+const BACKGROUND_COLOR = 48;
+const FONT_COLOR = 38;
+const COLOR_REFLEX = `\u001B[`;
+const CLEAR_COLOR = `${COLOR_REFLEX}0m`;
+const valid = (...ins) => {
+    for (let result of ins) {
+        if (result > RGB_VALUE_MAX) {
+            throw new Error("color value max is " + RGB_VALUE_MAX);
+        }
+        if (result < 0) {
+            throw new Error("color value min is 0 ");
+        }
+    }
+};
+class CustomColor {
+    static fontColor(R, G, L, ...content) {
+        return `${COLOR_REFLEX}${FONT_COLOR};2;${R};${G};${L}m${content}${CLEAR_COLOR}`;
+    }
+    static backgroundColor(R, G, L, ...content) {
+        return `${COLOR_REFLEX}${BACKGROUND_COLOR};2;${R};${G};${L}m${content}${CLEAR_COLOR}`;
+    }
+    static backgroundAndFontColor(R, G, L, R1, G1, L1, ...content) {
+        valid(R1, G1, L1, R, G, L);
+        return `${COLOR_REFLEX}${BACKGROUND_COLOR};2;${R};${G};${L}m${COLOR_REFLEX}${FONT_COLOR};2;${R1};${G1};%${L1}m${content}${CLEAR_COLOR}`;
+    }
+}
 
 const htmlFile = {
     ext: /\.(html)$/i,
@@ -341,15 +384,6 @@ const getIconBeforeClass = () => {
     return t;
 };
 
-const logo = `
-#    # #    #       #      # #    # ######        ####  ###### #####  #    # ###### #####  
-#    #  #  #        #      # #    # #            #      #      #    # #    # #      #    # 
-#    #   ##   ##### #      # #    # #####  #####  ####  #####  #    # #    # #####  #    # 
-# ## #   ##         #      # #    # #                 # #      #####  #    # #      #####  
-##  ##  #  #        #      #  #  #  #            #    # #      #   #   #  #  #      #   #  
-#    # #    #       ###### #   ##   ######        ####  ###### #    #   ##   ###### #    # 
-`;
-
 const MEDIA_TYPE = {
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',
@@ -384,6 +418,7 @@ const MEDIA_TYPE = {
     '.mp3': 'audio/mpeg',
     '.wav': 'audio/wav',
 };
+const CACHE_COMMAND_KEY = 'CACHE_COMMAND_KEY';
 
 class Page {
     constructor(url, content, is_html = false) {
@@ -526,101 +561,6 @@ const Template = `<!DOCTYPE html>
   </html>
   `;
 
-const RGB_VALUE_MAX = 255;
-const BACKGROUND_COLOR = 48;
-const FONT_COLOR = 38;
-const COLOR_REFLEX = `\u001B[`;
-const CLEAR_COLOR = `${COLOR_REFLEX}0m`;
-const valid = (...ins) => {
-    for (let result of ins) {
-        if (result > RGB_VALUE_MAX) {
-            throw new Error("color value max is " + RGB_VALUE_MAX);
-        }
-        if (result < 0) {
-            throw new Error("color value min is 0 ");
-        }
-    }
-};
-class CustomColor {
-    static fontColor(R, G, L, ...content) {
-        return `${COLOR_REFLEX}${FONT_COLOR};2;${R};${G};${L}m${content}${CLEAR_COLOR}`;
-    }
-    static backgroundColor(R, G, L, ...content) {
-        return `${COLOR_REFLEX}${BACKGROUND_COLOR};2;${R};${G};${L}m${content}${CLEAR_COLOR}`;
-    }
-    static backgroundAndFontColor(R, G, L, R1, G1, L1, ...content) {
-        valid(R1, G1, L1, R, G, L);
-        return `${COLOR_REFLEX}${BACKGROUND_COLOR};2;${R};${G};${L}m${COLOR_REFLEX}${FONT_COLOR};2;${R1};${G1};%${L1}m${content}${CLEAR_COLOR}`;
-    }
-}
-
-const CACHE_COMMAND_KEY = 'CACHE_COMMAND_KEY';
-let childWorkCommand = null;
-const cacheUpdate = (message, pageCache) => {
-    if (message instanceof Map) {
-        for (let [k, v] of message.entries()) {
-            if (k && k !== CACHE_COMMAND_KEY && v) {
-                pageCache.set(k, v);
-            }
-        }
-    }
-};
-let commandIsLoad = false;
-const watchContent = (message) => {
-    if (message instanceof Map) {
-        for (let [k, v] of message.entries()) {
-            if (k === CACHE_COMMAND_KEY && !commandIsLoad) {
-                childWorkCommand = message.get(CACHE_COMMAND_KEY);
-                commandIsLoad = true;
-            }
-            else if (commandIsLoad) {
-                watchFileChange(v, message);
-            }
-        }
-        worker_threads.parentPort.postMessage(message);
-    }
-};
-const FileNotFounds = [];
-const watchFileChange = (page, cache) => {
-    if (!(page === null || page === void 0 ? void 0 : page.pageUrl) || !(page === null || page === void 0 ? void 0 : page.content) || !(page === null || page === void 0 ? void 0 : page.contentType)) {
-        return;
-    }
-    let pageUrl = page.pageUrl;
-    if (FileNotFounds.indexOf(pageUrl) !== -1) {
-        return;
-    }
-    let real_url = getAbsoluteUrl(pageUrl, childWorkCommand.root);
-    console.log('child watch file change info watch url =', real_url);
-    if (!fs__namespace.existsSync(real_url)) {
-        FileNotFounds.push(pageUrl);
-        return;
-    }
-    const status = fs__namespace.statSync(real_url);
-    if (status.isDirectory()) {
-        curReadFolder(real_url, cache, true);
-    }
-    else {
-        try {
-            const data = readFile(real_url);
-            if (data) {
-                cache.set(pageUrl, new Page(pageUrl, data));
-            }
-        }
-        catch (error) {
-            errorLog(error);
-        }
-    }
-};
-const childWorkerRun = (cmd, time = 2000, pageCache) => {
-    const childWorker = new worker_threads.Worker(__filename);
-    setInterval(() => {
-        childWorker.postMessage(pageCache);
-    }, time);
-    childWorker.on('message', message => {
-        cacheUpdate(message, pageCache);
-    });
-};
-
 const isWindow = () => process.platform === 'win32';
 const isMac = () => process.platform === 'darwin';
 const createIndexHtml = (p, config) => {
@@ -680,6 +620,28 @@ const getAbsoluteUrl = (url, rootDir = './') => {
         return path__namespace.join(abs, url == '' ? '' : url);
     }
 };
+const ignoreBaseUrl = (url, ingoreBase) => {
+    if (!ingoreBase || ingoreBase == '/') {
+        return url;
+    }
+    if (Array.isArray(ingoreBase)) {
+        for (let i = 0; i < ingoreBase.length; i++) {
+            if (url.indexOf(ingoreBase[i]) !== -1) {
+                url = url.replace(ingoreBase[i], '');
+            }
+        }
+    }
+    else if (url.indexOf(ingoreBase) !== -1) {
+        url = url.replace(ingoreBase, '');
+    }
+    return url;
+};
+const baseUrl = (url, baseUrl) => {
+    if (!baseUrl || baseUrl == '/') {
+        return url;
+    }
+    return `${baseUrl}/${url}`;
+};
 const handlerUrl = (url) => {
     if (!url) {
         return '';
@@ -735,7 +697,6 @@ const curReadFolder = (folderPath = getAbsoutePath(''), cache, isParse = false) 
             .replace(/<title>(.*?)<\/title>/, `<title>${title}</title>`)
             .replace(/<div class="container">(.*?)<\/div>/, `<div class="container">${temp}</div>`);
     }
-    console.log('save url : ', reqUrl, 'content:', readContent.toString());
     cache.set(reqUrl, new Page(reqUrl, readContent, true));
     return readContent;
 };
@@ -755,21 +716,6 @@ const colorUtils = {
     'custom': function (background, fontColor, ...args) {
         console.log(CustomColor.backgroundAndFontColor(background.R, background.G, background.L, fontColor.R, fontColor.G, fontColor.L, args));
     }
-};
-
-const config = {
-    port: 8080,
-    index: 'index.html',
-    parseIndex: false,
-    single: false,
-    watch: false,
-    open: true,
-    time: 3000,
-    logo: true,
-    root: '.',
-    base: '/',
-    ignoreBase: '',
-    ignoreFile: '',
 };
 
 const createCommand = () => {
@@ -893,7 +839,6 @@ const parseRootCommand = () => {
 };
 const parseFileCommand = (curr, commandStr, fileName) => {
     if (!fileName) {
-        colorUtils.error(`${fileName} is not allowed null or undefined`);
         return fileName;
     }
     let file;
@@ -908,6 +853,7 @@ const parseFileCommand = (curr, commandStr, fileName) => {
 };
 const parseCommand = () => {
     var _a;
+    console.log('初始命令:', initCommand);
     let currDirctory = parseRootCommand();
     let directIndexHtmlFile = (_a = parseFileCommand(currDirctory, initCommand['index'], 'index.html')) !== null && _a !== void 0 ? _a : 'index.html';
     let errorPath = parseFileCommand(currDirctory, initCommand['errorPage'], '');
@@ -919,10 +865,12 @@ const parseCommand = () => {
     let isOpen1 = parseStringOrBoolCommand(initCommand['open'], config.open);
     let watch = parseStringOrBoolCommand(initCommand['watch'], config.watch);
     let isPrintLogo1 = parseStringOrBoolCommand(initCommand['logo'], config.logo);
+    let base = parseStringOrBoolCommand(initCommand['base'], config.base);
+    let ignoreBase = parseStringOrBoolCommand(initCommand['ignoreBase'], config.ignoreBase);
     let serverConfig = {
         'port': port,
-        'base': '/',
-        'ignoreBase': '/wuxin00111.gitee.io',
+        'base': base,
+        'ignoreBase': ignoreBase,
         'index': directIndexHtmlFile,
         'root': currDirctory,
         'parseIndex': isParseInndex,
@@ -933,8 +881,117 @@ const parseCommand = () => {
         'logo': isPrintLogo1,
         'errorPage': errorPage
     };
-    colorUtils.success(`init serverConfig info ... ${serverConfig})`);
+    console.log('======================基础信息==================');
+    console.log('端口号', serverConfig.port);
+    console.log('前缀', serverConfig.base);
+    console.log('忽略前缀', serverConfig.ignoreBase);
+    console.log('是否解析index.html', serverConfig.parseIndex);
+    console.log('index.html = >', serverConfig.index);
+    console.log('是否是单文件应用', serverConfig.single);
+    console.log('是否打开默认浏览器', serverConfig.open);
+    console.log('是否监视文件', serverConfig.watch, '监视时间', serverConfig.time);
+    console.log('是否打印logo', serverConfig.logo);
     return serverConfig;
+};
+
+const handlerBaseMiddware = (request, response) => {
+    let url = decodeURIComponent(handlerUrl(request.url));
+    url = ignoreBaseUrl(url, serverConfig.ignoreBase);
+    url = baseUrl(url, serverConfig.base);
+    request.url = url;
+};
+
+const middwares = [
+    handlerBaseMiddware
+];
+const handlerMiddware = (request, response) => {
+    try {
+        if (request.url.startsWith('http')) {
+            return;
+        }
+        for (let i = 0; i < middwares.length; i++) {
+            const middware = middwares[i];
+            middware(request, response);
+        }
+    }
+    catch (error) {
+        colorUtils.error(`middware handler error ${error}`);
+    }
+};
+
+const logo = `
+#    # #    #       #      # #    # ######        ####  ###### #####  #    # ###### #####  
+#    #  #  #        #      # #    # #            #      #      #    # #    # #      #    # 
+#    #   ##   ##### #      # #    # #####  #####  ####  #####  #    # #    # #####  #    # 
+# ## #   ##         #      # #    # #                 # #      #####  #    # #      #####  
+##  ##  #  #        #      #  #  #  #            #    # #      #   #   #  #  #      #   #  
+#    # #    #       ###### #   ##   ######        ####  ###### #    #   ##   ###### #    # 
+`;
+
+let childWorkCommand = null;
+const cacheUpdate = (message, pageCache) => {
+    if (message instanceof Map) {
+        for (let [k, v] of message.entries()) {
+            if (k && k !== CACHE_COMMAND_KEY && v) {
+                pageCache.set(k, v);
+            }
+        }
+    }
+};
+let commandIsLoad = false;
+const watchContent = (message) => {
+    if (message instanceof Map) {
+        for (let [k, v] of message.entries()) {
+            if (k === CACHE_COMMAND_KEY && !commandIsLoad) {
+                childWorkCommand = message.get(CACHE_COMMAND_KEY);
+                commandIsLoad = true;
+            }
+            else if (commandIsLoad) {
+                watchFileChange(v, message);
+            }
+        }
+        worker_threads.parentPort.postMessage(message);
+    }
+};
+const FileNotFounds = [];
+const watchFileChange = (page, cache) => {
+    if (!(page === null || page === void 0 ? void 0 : page.pageUrl) || !(page === null || page === void 0 ? void 0 : page.content) || !(page === null || page === void 0 ? void 0 : page.contentType)) {
+        return;
+    }
+    let pageUrl = page.pageUrl;
+    if (FileNotFounds.indexOf(pageUrl) !== -1) {
+        return;
+    }
+    let real_url = getAbsoluteUrl(pageUrl, childWorkCommand.root);
+    console.log('child watch file change info watch url =', real_url);
+    if (!fs__namespace.existsSync(real_url)) {
+        FileNotFounds.push(pageUrl);
+        return;
+    }
+    const status = fs__namespace.statSync(real_url);
+    if (status.isDirectory()) {
+        curReadFolder(real_url, cache, true);
+    }
+    else {
+        try {
+            const data = readFile(real_url);
+            if (data) {
+                cache.set(pageUrl, new Page(pageUrl, data));
+            }
+        }
+        catch (error) {
+            errorLog(error);
+        }
+    }
+};
+const childWorkerRun = (cmd, time = 2000, pageCache) => {
+    const childWorker = new worker_threads.Worker(__filename);
+    setInterval(() => {
+        childWorker.postMessage(pageCache);
+    }, time);
+    childWorker.on('message', message => {
+        cacheUpdate(message, pageCache);
+    });
 };
 
 const allReqUrl = [];
@@ -951,7 +1008,8 @@ const cors = (request, response) => {
 };
 const server = http__namespace.createServer((request, response) => {
     cors(request, response);
-    let url = decodeURIComponent(handlerUrl(request.url));
+    handlerMiddware(request, response);
+    let url = request.url;
     if (NotFoundPageUrl.indexOf(url) !== -1) {
         colorUtils.error(`访问路径不存在！:${url} 对应真实文件路径： ${getAbsoluteUrl(url, serverConfig.root)}`);
         responseTemplate(request, response, NOT_FOUND_PAGE);
@@ -962,9 +1020,8 @@ const server = http__namespace.createServer((request, response) => {
     }
 });
 const responseContent = (request, response) => {
-    let url = handlerUrl(request.url);
+    let url = request.url;
     let real_url = getAbsoluteUrl(url, serverConfig.root);
-    let requestUrl = decodeURIComponent(url);
     if (!fs__namespace.existsSync(real_url)) {
         if (!serverConfig.single) {
             responseErrorPage(request, response, "请求内容不存在");
@@ -979,17 +1036,17 @@ const responseContent = (request, response) => {
                 const indexHtml = createIndexHtml(real_url, serverConfig);
                 if (fs__namespace.existsSync(indexHtml)) {
                     let content = readFile(indexHtml);
-                    const this_page = new Page(requestUrl, content, false);
+                    const this_page = new Page(url, content, false);
                     responseTemplate(request, response, this_page);
-                    allReqUrl.push(requestUrl);
-                    pageCache.set(requestUrl, this_page);
+                    allReqUrl.push(url);
+                    pageCache.set(url, this_page);
                 }
             }
             return;
         }
         if (status.isDirectory()) {
             curReadFolder(real_url, pageCache.cache);
-            const page = pageCache.get(requestUrl);
+            const page = pageCache.get(url);
             responseTemplate(request, response, page !== -1 ? page : NOT_FOUND_PAGE);
         }
         else {
@@ -997,13 +1054,13 @@ const responseContent = (request, response) => {
             if (!content) {
                 if (!serverConfig.single) {
                     responseErrorPage(request, response, "请求内容不存在");
-                    NotFoundPageUrl.push(requestUrl);
+                    NotFoundPageUrl.push(url);
                 }
             }
             else {
-                const page = new Page(requestUrl, content, false);
-                pageCache.set(requestUrl, page);
-                allReqUrl.push(requestUrl);
+                const page = new Page(url, content, false);
+                pageCache.set(url, page);
+                allReqUrl.push(url);
                 responseTemplate(request, response, page);
             }
         }

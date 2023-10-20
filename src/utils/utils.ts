@@ -5,7 +5,7 @@ import { CustomColor, Index } from '../color/index'
 import { getClassName } from '../render/files'
 import Page from '../render/page'
 import { Template } from "../render/template"
-import { CACHE_COMMAND_KEY } from '../watch/index'
+import { CACHE_COMMAND_KEY } from '../constant'
 
 /**
  * is windows ?
@@ -107,6 +107,29 @@ export const getAbsoluteUrl = (url: string, rootDir: string = './') => {
 }
 
 
+export const ignoreBaseUrl = (url: string, ingoreBase: string | string[]) => {
+    if (!ingoreBase || ingoreBase == '/') {
+        return url
+    }
+    if (Array.isArray(ingoreBase)) {
+        for (let i = 0; i < ingoreBase.length; i++) {
+            if (url.indexOf(ingoreBase[i]) !== -1) {
+                url = url.replace(ingoreBase[i], '')
+            }
+        }
+    } else if (url.indexOf(ingoreBase) !== -1) {
+        url = url.replace(ingoreBase, '')
+    }
+    return url
+}
+
+export const baseUrl = (url: string, baseUrl: string) => {
+    if (!baseUrl || baseUrl == '/') {
+        return url
+    }
+    return `${baseUrl}/${url}`
+}
+
 export const handlerUrl = (url: string) => {
     if (!url) {
         return ''
@@ -182,7 +205,7 @@ export const curReadFolder = (
 
 
     }
-    console.log('save url : ', reqUrl, 'content:', readContent.toString())
+    // console.log('save url : ', reqUrl, 'content:', readContent.toString())
     cache.set(reqUrl, new Page(reqUrl, readContent, true))
     return readContent
 }

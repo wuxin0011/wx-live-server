@@ -1,7 +1,6 @@
 import { FileType, Icon } from '../../types/index';
 
 
-
 const htmlFile: FileType = {
   ext: /\.(html)$/i,
   className: 'html',

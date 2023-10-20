@@ -3,6 +3,10 @@ import * as fs from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import * as http from 'node:http'
 import { isMainThread, parentPort } from 'worker_threads'
+import { ServerConfig } from '../types/index'
+import { includeCommand, initCommand, parseCommand, parseCommandArgs, parseHelpCommand } from './command/index'
+import { CACHE_COMMAND_KEY } from './constant'
+import handlerMiddware from './middware/index'
 import { getExt, unknownFile } from './render/files'
 import logo from "./render/logo"
 import Page, { LRUCache } from './render/page'
@@ -13,15 +17,12 @@ import {
     curReadFolder,
     errorLog,
     getAbsoluteUrl,
-    handlerUrl,
     isAllowResolve,
     isMac,
     isWindow,
     readFile
 } from './utils/utils'
-import { CACHE_COMMAND_KEY, childWorkerRun, watchContent } from "./watch/index"
-import { ServerConfig } from '../types/index'
-import { includeCommand, parseCommand, parseCommandArgs, parseHelpCommand, initCommand } from './command/index'
+import { childWorkerRun, watchContent } from "./watch/index"
 
 
 
@@ -42,9 +43,7 @@ const hostname = '127.0.0.1'
 let count = 0
 /* command args */
 
-
-
-let serverConfig: ServerConfig | null | undefined = null
+export let serverConfig: ServerConfig | null = null
 
 
 /**
@@ -65,7 +64,8 @@ const cors = (request: IncomingMessage, response: ServerResponse) => {
  */
 const server = http.createServer((request: IncomingMessage, response: ServerResponse) => {
     cors(request, response)
-    let url = decodeURIComponent(handlerUrl(request.url))
+    handlerMiddware(request, response)
+    let url = request.url
     // 是否是错误请求
     if (NotFoundPageUrl.indexOf(url) !== -1) {
         colorUtils.error(`访问路径不存在！:${url} 对应真实文件路径： ${getAbsoluteUrl(url, serverConfig.root)}`)
@@ -97,9 +97,8 @@ const server = http.createServer((request: IncomingMessage, response: ServerResp
  * @param {*} response 响应
  */
 const responseContent = (request: IncomingMessage, response: ServerResponse) => {
-    let url = handlerUrl(request.url)
+    let url = request.url
     let real_url = getAbsoluteUrl(url, serverConfig.root);
-    let requestUrl = decodeURIComponent(url)
     // colorUtils.warning(`${new Date().toLocaleString()} 请求地址 = http://${hostname}:${port}${url} 真实路径 = ${real_url} `)
     // 检查文件是否存在
     if (!fs.existsSync(real_url)) {
@@ -120,11 +119,11 @@ const responseContent = (request: IncomingMessage, response: ServerResponse) => 
                 if (fs.existsSync(indexHtml)) {
                     let content = readFile(indexHtml)
                     // 响应页面内容
-                    const this_page = new Page(requestUrl, content, false)
+                    const this_page = new Page(url, content, false)
                     responseTemplate(request, response, this_page)
                     // 缓存本次 请求
-                    allReqUrl.push(requestUrl)
-                    pageCache.set(requestUrl, this_page)
+                    allReqUrl.push(url)
+                    pageCache.set(url, this_page)
                 }
             }
             return;
@@ -134,7 +133,7 @@ const responseContent = (request: IncomingMessage, response: ServerResponse) => 
         // 如果是文件夹类型文件 应该直接读取第一级文件的文件信息 响应一个页面
         if (status.isDirectory()) {
             curReadFolder(real_url, pageCache.cache)
-            const page = pageCache.get(requestUrl)
+            const page = pageCache.get(url)
             responseTemplate(request, response, page !== -1 ? page as Page : NOT_FOUND_PAGE)
         } else {
 
@@ -144,15 +143,15 @@ const responseContent = (request: IncomingMessage, response: ServerResponse) => 
                 if (!serverConfig.single) {
                     responseErrorPage(request, response, "请求内容不存在")
                     // 缓存本次请求
-                    NotFoundPageUrl.push(requestUrl)
+                    NotFoundPageUrl.push(url)
                 }
 
             } else {
                 // 响应页面内容
-                const page = new Page(requestUrl, content, false)
-                pageCache.set(requestUrl, page)
+                const page = new Page(url, content, false)
+                pageCache.set(url, page)
                 // 缓存本次 请求
-                allReqUrl.push(requestUrl)
+                allReqUrl.push(url)
                 responseTemplate(request, response, page)
             }
         }

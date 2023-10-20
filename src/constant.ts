@@ -34,3 +34,6 @@ export const MEDIA_TYPE = {
   '.wav': 'audio/wav',
 };
 
+
+
+export const CACHE_COMMAND_KEY = 'CACHE_COMMAND_KEY'

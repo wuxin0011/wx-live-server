@@ -1,11 +1,9 @@
-import { ServerConfig } from './../../types/index.d';
 import * as fs from "node:fs";
 import { parentPort, Worker } from "worker_threads";
-import { initCommand } from '../command/index'
 import Page, { LRUCache } from "../render/page";
 import { curReadFolder, errorLog, getAbsoluteUrl, readFile } from "../utils/utils";
-
-export const CACHE_COMMAND_KEY = 'CACHE_COMMAND_KEY'
+import { ServerConfig } from './../../types/index.d';
+import { CACHE_COMMAND_KEY } from '../constant'
 
 let childWorkCommand: ServerConfig | null = null
 
