@@ -81,11 +81,10 @@ export const parseCommandArgs = (arg: string, defaultValue: unknown) => {
 
 
 const parseStringOrBoolCommand = (commandArg: string, defaultValue: string | boolean) => {
-    console.log('command', commandArg)
     let result = defaultValue
     if (includeCommand(commandArg)) {
         result = parseCommandArgs(commandArg, defaultValue) as typeof defaultValue
-        if (commandArg === '--ignoreBase') {
+        if (commandArg === initCommand.ignoreBase) {
             console.log('result', result)
         }
     }
@@ -171,7 +170,7 @@ const parseFileCommand = (curr: string, commandStr: string, fileName: string) =>
 export const parseCommand = () => {
 
 
-    console.log('初始命令:', initCommand)
+    // console.log('初始命令:', initCommand)
 
     let currDirctory = parseRootCommand()
     let directIndexHtmlFile = parseFileCommand(currDirctory, initCommand['index'], 'index.html') ?? 'index.html'

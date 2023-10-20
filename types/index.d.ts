@@ -1,4 +1,3 @@
-import { ServerConfig } from './index.d';
 export { }
 
 export interface Icon {
