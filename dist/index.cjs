@@ -780,9 +780,13 @@ const parseCommandArgs = (arg, defaultValue) => {
     return defaultValue;
 };
 const parseStringOrBoolCommand = (commandArg, defaultValue) => {
+    console.log('command', commandArg);
     let result = defaultValue;
     if (includeCommand(commandArg)) {
         result = parseCommandArgs(commandArg, defaultValue);
+        if (commandArg === '--ignoreBase') {
+            console.log('result', result);
+        }
     }
     return result;
 };
@@ -1016,6 +1020,15 @@ const server = http__namespace.createServer((request, response) => {
         return;
     }
     if (isAllowResolve(url)) {
+        if (allReqUrl.indexOf(url) === -1) {
+            responseContent(request, response);
+            return;
+        }
+        const cacheContent = pageCache.get(url);
+        if (cacheContent === -1) {
+            responseContent(request, response);
+            return;
+        }
         responseContent(request, response);
     }
 });

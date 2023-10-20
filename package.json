@@ -18,7 +18,7 @@
     "command:port": "node ./dist/index.cjs --port=1000",
     "command:watch": "node ./dist/index.cjs --watch=false",
     "command:single": "node ./dist/index.cjs --port=9000 --watch=false --root=D://desktop//github//island --single",
-    "command:html": "node ./dist/index.cjs --port=8888 --ingoreBase=/wuxin011.gitee.io --watch=false --root=D://desktop//github//blog//docs//.vuepress//dist"
+    "command:html": "node ./dist/index.cjs --port=8888 --ingoreBase=wuxin011.gitee.io --watch=false --root=D://desktop//github//blog//docs//.vuepress//dist"
   },
   "keywords": [],
   "author": "wuxin0011",

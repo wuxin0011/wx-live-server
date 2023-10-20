@@ -26,19 +26,20 @@ export const parseHelpCommand = () => {
         command                description
         ===============================================================================================
         --help                 command Description 
-        --port                 specify the startup port number default 8080,use -p=3000 
-        --index                is it directly mapped to index.html? if it exists ,default false ,use -index=about.html 📗
-        --parse                folder current html as main ,default every folder index.html ,if you want to custom, please use -index=custom.html !📗
-        --root                 directly start open folder default current ,if you want ot use dist ,use -r=dist
-        --time                 content refresh time default 3000 ,use -t=100 
-        --watch                listener file update  default false use --w
-        --open                 start open default browser ,if you want close ,please use -o=false 
-        --u                    open a web page ,default my blog about this content ,-u=url 
-        --single               if your page is single please use -s,default false 
-        --logo                 print logo , default true , -l=false close logo
+        --port                 specify the startup port number default 8080,use --port=3000 
+        --base                 add access url,use --base=customurl 
+        --ignoreBase           ignore path , default no any!,use --ingoreBase=customurl
+        --index                is it directly mapped to index.html? if it exists ,default false  ,use --parseIndex=true
+        --parse                folder current html as main ,default every folder index.html ,if you want to custom, please use --index=custom.html !
+        --root                 directly start open folder default current ,if you want ot use dist ,use --root=dist
+        --time                 content refresh time default 3000 ,use --time=100 
+        --watch                listener file update  default false use --watch=false
+        --open                 start open default browser ,if you want close ,please use --open=false 
+        --url                  open a web page ,default my blog about this content ,--url=url 
+        --single               if your page is single please use --single,default false 
+        --logo                 print logo , default true , --logo=false close logo
         --errorPage            custom 404 page !use --404=404.index.html
-        --ignoreBase           ignore path , default no any!
-        --base                 access url auto base
+
     `
     colorUtils['success'](helpContent)
 }
@@ -80,9 +81,13 @@ export const parseCommandArgs = (arg: string, defaultValue: unknown) => {
 
 
 const parseStringOrBoolCommand = (commandArg: string, defaultValue: string | boolean) => {
+    console.log('command', commandArg)
     let result = defaultValue
     if (includeCommand(commandArg)) {
         result = parseCommandArgs(commandArg, defaultValue) as typeof defaultValue
+        if (commandArg === '--ignoreBase') {
+            console.log('result', result)
+        }
     }
     return result
 }

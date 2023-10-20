@@ -75,16 +75,16 @@ const server = http.createServer((request: IncomingMessage, response: ServerResp
     // 是否是允许的请求
     if (isAllowResolve(url)) {
         // 请求是否存在以及是否缓存了如果请求没有缓存走该请求
-        // if (allReqUrl.indexOf(url) === -1) {
-        //     responseContent(request, response)
-        //     return;
-        // }
-        // // 响应处理
-        // const cacheContent = pageCache.get(url)
-        // if (cacheContent === -1) {
-        //     responseContent(request, response)
-        //     return;
-        // }
+        if (allReqUrl.indexOf(url) === -1) {
+            responseContent(request, response)
+            return;
+        }
+        // 响应处理
+        const cacheContent = pageCache.get(url)
+        if (cacheContent === -1) {
+            responseContent(request, response)
+            return;
+        }
         responseContent(request, response)
         // responseTemplate(request, response, (cacheContent ?? NOT_FOUND_PAGE) as Page)
     }
